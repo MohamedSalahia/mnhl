@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <polygon id="star1" points="0,-22 5.17,-7.13 20.92,-6.80 8.37,2.72 12.93,17.80 0,8.8 -12.93,17.80 -8.37,2.72 -20.92,-6.80 -5.17,-7.13"/>
+  </defs>
+  <rect width="512" height="170.67" fill="#007a3d"/>
+  <rect y="170.67" width="512" height="170.67" fill="#fff"/>
+  <rect y="341.33" width="512" height="170.67" fill="#000"/>
+  <use xlink:href="#star1" href="#star1" transform="translate(128,256)" fill="#ce1126"/>
+  <use xlink:href="#star1" href="#star1" transform="translate(256,256)" fill="#ce1126"/>
+  <use xlink:href="#star1" href="#star1" transform="translate(384,256)" fill="#ce1126"/>
+</svg>

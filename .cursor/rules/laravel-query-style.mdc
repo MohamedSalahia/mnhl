@@ -1,0 +1,176 @@
+---
+description: Eloquent query chaining, with / withCount / addSelect order
+alwaysApply: true
+---
+
+# Laravel Query Style Rules
+
+## When to use `Model::query()`
+
+Use **`Model::query()`** only when building a **read** chain that fetches or inspects rows: chains ending in **`get()`**, **`first()`**, **`firstOrFail()`**, **`paginate()`**, **`simplePaginate()`**, **`cursor()`**, **`pluck()`**, **`value()`**, **`exists()`**, **`doesntExist()`**, **`count()`**, etc.
+
+Do **not** start with **`Model::query()`** for **create**, **update**, **delete**, **destroy**, **insert**, **upsert**, or other writes—use the appropriate API without a leading `query()` (e.g. **`Model::create()`**, **`Model::where(...)->update()`**, **`$model->update()`**, **`Model::destroy()`**).
+
+## Model Query (reads)
+✔
+```php
+User::query()
+    ->where('status', 1)
+    ->get();
+```
+✖
+```php
+User::where('status', 1)->get();
+```
+
+## Writes (no `query()`)
+✔
+```php
+User::create([
+    'name' => $name,
+    'email' => $email,
+]);
+
+$user->update([
+    'name' => $name,
+]);
+
+User::where('status', 'inactive')
+    ->update(['archived' => true]);
+
+User::destroy($id);
+```
+✖
+```php
+User::query()->create([/* ... */]);
+
+User::query()
+    ->where('status', 'inactive')
+    ->update(['archived' => true]);
+```
+
+## Chaining
+✔
+```php
+User::query()
+    ->with(['parents'])
+    ->withCount(['children'])
+    ->where('status', 1)
+    ->get();
+```
+✖
+```php
+User::query()->where('status', 1)->with('parents')->get();
+```
+
+## with() and withCount()
+When eager loading relations or relation counts, chain **`with()`** then **`withCount()`** (if needed) **immediately after** `Model::query()`, **before any method that constrains or sorts the main model query**.
+
+**`addSelect` / `select` on the parent:** When **`with()`** or **`withCount()`** is used, chain **`addSelect`** (and parent **`select`**) **immediately after** the last of `with` / `withCount`—**below** them, **before** any parent constraint or sort. If there is no eager loading, `addSelect` / `select` follow `query()` as usual.
+
+**Comes after `with` / `withCount` and after parent `addSelect` / `select` (non-exhaustive):** `where`, `whereKey`, `whereIn`, `whereNull`, `whereHas`, `whereDoesntHave`, `whereExists`, scopes that add `where` / `join` on the parent, `when(...)` / custom `scopeWhen*` that add constraints, `orderBy`, `latest`, `groupBy`, `having`, `limit` / `take`, `skip` / `offset`, `paginate`, etc.
+
+**Closure arguments inside `with([...])` or `withCount([...])`** may use `where` on the **relation subquery** only—that does not violate this rule.
+
+✔
+```php
+Model::query()
+    ->with([
+        'relationA',
+        'relationB' => fn ($query) => $query->where('active', true),
+    ])
+    ->withCount([
+        'items',
+        'items as active_items_count' => fn ($query) => $query->where('status', 'active'),
+    ])
+    ->where('status', 1)
+    ->orderBy('name')
+    ->get();
+```
+✔
+```php
+Model::query()
+    ->with(['relationA'])
+    ->withCount(['items'])
+    ->addSelect('id', 'name')
+    ->where('status', 1)
+    ->get();
+```
+✖
+```php
+Model::query()
+    ->addSelect('id', 'name')
+    ->with(['relationA'])
+    ->where('status', 1)
+    ->get();
+```
+✖
+```php
+Model::query()
+    ->where('status', 1)
+    ->with(['relationA'])
+    ->withCount(['items'])
+    ->get();
+```
+✖
+```php
+// whereKey / when(...) also count as parent constraints — with() must still be first
+Model::query()
+    ->whereKey($id)
+    ->with(['relationA'])
+    ->when($condition, fn ($q) => $q->where('published', true))
+    ->first();
+```
+✔
+```php
+Model::query()
+    ->with(['relationA'])
+    ->whereKey($id)
+    ->when($condition, fn ($q) => $q->where('published', true))
+    ->first();
+```
+
+## whereHas
+✔
+```php
+User::query()
+    ->with(['profile'])
+    ->withCount(['posts'])
+    ->whereHas('studentNurseries', function ($query) {
+
+        $query->where('nursery_student.status', NurseryStudentStatusEnum::ACTIVE);
+
+    })
+    ->get();
+```
+✖
+```php
+User::query()
+    ->whereHas('studentNurseries', function ($query) {
+        $query->where('nursery_student.status', NurseryStudentStatusEnum::ACTIVE);
+    })
+    ->get();
+```
+
+## Final Method
+✔
+```php
+User::query()
+    ->where('status', 1)
+    ->get();
+```
+✖
+```php
+User::query()
+    ->where('status', 1)->get();
+```
+
+## Rules
+- Use **`Model::query()`** for **read** chains (fetch / inspect results). Do **not** use **`Model::query()`** for create, update, delete, destroy, insert, upsert.
+- After `query()`, when using eager loading, chain `with()` then `withCount()` (omit either if not needed), then parent **`addSelect` / `select`** if needed, **before every other parent-model constraint**, including `where`, `whereKey`, `whereHas`, `when` / scope helpers that add `where`, and `orderBy`
+- Each -> on new line
+- No inline chains
+- Empty line after { and before }
+- Indent closures
+- Final method on new line
+- Use 4 spaces

@@ -1,0 +1,60 @@
+---
+description: snake_case routes, views, and identifiers; migration filenames and orb php artisan make:migration for new migration files
+alwaysApply: true
+---
+
+# NAMING
+
+- **Route URL paths** MUST use snake_case segments (e.g. `/user_profile`, `/attach_student_branch`).
+- **Route names** MUST use snake_case (e.g. `user_profile.index`, `students.attach_branch`).
+- **Views and other identifiers** in this convention MUST be snake_case.
+
+✔ Examples:
+
+```text
+/user_profile
+user_profile.index
+user_profile.blade.php
+```
+
+## Database migration files — filename and creation
+
+Every file under `database/migrations/` **must** match Laravel’s naming convention so execution order is deterministic:
+
+- Pattern: **`YYYY_MM_DD_HHMMSS_snake_case_description.php`**
+  - **`YYYY_MM_DD`** — date (4-digit year, 2-digit month, 2-digit day)
+  - **`HHMMSS`** — a **valid 24h clock time** in six digits: **`HH`** (hour) + **`MM`** (minute) + **`SS`** (second). `MM` and `SS` each range `00`–`59` (e.g. `150060` is **invalid** — there is no 60th second). Same overall style as `php artisan make:migration`.
+  - **`_snake_case_description`** — suffix, usually `create_*_table`, `add_*_to_*_table`, etc.
+
+**Hand-ordered / grouped migrations (recommended for this project):** use a **real** `HH:MM:SS` on the clock — including the **actual minute** (`MM`), not an artificial `00` for the minutes unless the real time is on the hour. Consecutive files are usually the **next second** in the same real minute (e.g. `135010` then `135011` = 13:50:10 and 13:50:11). If a batch would pass second `59` in that minute, carry to the next valid minute (e.g. 13:50:59 → 13:51:00 as `135059` then `135100`); **never** use a fake time such as `135060` (60 is not a valid second).
+
+`php artisan make:migration` already embeds the **current** hour, minute, and second — that is the intended source of the **actual** minute. When you **rename** a batch to line up in the file tree, set `HHMMSS` to a real time (same wall-clock minute for a short sequence), not `…00` for `MM` unless it matches the real time.
+
+Artisan generates this prefix automatically; **do not** use ad-hoc dates, missing time segments, dashes instead of underscores, or timestamps that do not sort correctly next to related migrations.
+
+✔ `2026_04_23_135010_create_standards_table.php` (time `13:50:10` — `MM` = **50**, the real clock minute)  
+✔ `2026_04_23_135011_create_standard_translations_table.php` (time `13:50:11` — parent + **1 second**)
+
+✖ `20260423_create_standards_table.php` — wrong (no `_` segments, no `HHMMSS`)  
+✖ `2026-04-23_create_standards_table.php` — wrong (dashes, not Laravel format)  
+✖ `2026_04_23_create_standards_table.php` — wrong (date only, no `HHMMSS`)
+
+For a **parent table + translations table** pair, use the **next second** in real clock time (e.g. `135010` then `135011` for `13:50:10` and `13:50:11` on the same date, same `MM`). For more than one feature in a row, continue in the same minute with consecutive seconds, or the next real minute as needed.
+
+### Creating new migration files
+
+- **New migration file = Laravel only.** On every **new** file under `database/migrations/`, you **must** create it with **`orb php artisan make:migration ...`** and then edit the **generated** file. That command produces a valid **`YYYY_MM_DD_HHMMSS_…`** name; do not rename it away from that format.
+- **If a migration file is ever added or renamed without Artisan** (only when unavoidable): the filename **must still** use the full **`YYYY_MM_DD_HHMMSS_` + snake_case** pattern above — never a partial or custom date string.
+- If you add a **parent + translations** pair, run **`orb php artisan make:migration` twice** and ensure the **translations** file has a **later** timestamp (or a name that sorts **after** the parent) so the parent table exists first.
+- Use **`--table=...`** when `make:migration` targets an existing table.
+- **Never** hand-create migration files with ad-hoc names that ignore valid **`YYYY_MM_DD_HHMMSS`**.
+
+✔
+```bash
+orb php artisan make:migration add_status_to_users_table --table=users
+```
+
+✖
+```bash
+# ad-hoc filenames that ignore YYYY_MM_DD_HHMMSS
+```

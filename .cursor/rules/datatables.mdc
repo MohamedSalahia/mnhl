@@ -1,0 +1,201 @@
+---
+description: DataTables patterns for admin index pages (Vite/JS structure)
+globs: **/*.blade.php
+alwaysApply: false
+---
+
+Server-side column HTML (Yajra `data()` in PHP): [.cursor/rules/laravel-controller.mdc](.cursor/rules/laravel-controller.mdc) (section **DataTables — controller `data()`**)
+
+# DATATABLES (ADMIN INDEX ONLY)
+
+```blade
+@push('scripts')
+<script>
+$(function () {
+    let governorateId;
+    let areaId;
+    let inTrialPeriod = "{{ request()->in_trial_period }}";
+    let active;
+    let invoiceStatus;
+    let premium = "{{ request()->premium }}";
+
+    let nurseriesTable = $('#nurseries-table').DataTable({
+        dom: "tiplr",
+        buttons: [
+            {
+                extend: 'excelHtml5',
+                exportOptions: {
+                    columns: [1, 2, 3]
+                }
+            },
+            {
+                extend: 'pdfHtml5',
+                exportOptions: {
+                    columns: [1, 2, 3]
+                }
+            },
+        ],
+        serverSide: true,
+        processing: true,
+        language: {
+            url: "{{ asset('admin_assets/datatable-lang/' . app()->getLocale() . '.json') }}"
+        },
+        ajax: {
+            url: '{{ route('admin.nurseries.data') }}',
+            data: function (d) {
+                d.governorate_id = governorateId;
+                d.area_id = areaId;
+                d.in_trial_period = inTrialPeriod;
+                d.active = active;
+                d.invoice_status = invoiceStatus;
+                d.premium = premium;
+            }
+        },
+        columns: [
+            {data: 'name', name: 'name', sortable: false},
+            {data: 'country', name: 'country', sortable: false, searchable: false},
+            {data: 'governorate', name: 'governorate', sortable: false, searchable: false},
+            {data: 'area', name: 'area', sortable: false, searchable: false},
+            {data: 'created_at', name: 'created_at', searchable: false},
+            {data: 'actions', name: 'actions', searchable: false, sortable: false},
+        ],
+        order: [[4, 'desc']],
+        drawCallback: function (settings) {
+            $('.record__select').prop('checked', false);
+            $('#record__select-all').prop('checked', false);
+            $('#record-ids').val();
+            $('#bulk-delete').attr('disabled', true);
+
+            if (window.lazyLoadInstance) {
+                window.lazyLoadInstance.update();
+            }
+        }
+    });
+
+    $('#governorate-id').on('change', function () {
+        governorateId = this.value;
+        nurseriesTable.ajax.reload();
+    });
+
+    $('#area-id').on('change', function () {
+        areaId = this.value;
+        nurseriesTable.ajax.reload();
+    });
+
+    $('#in-trial-period').on('change', function () {
+        inTrialPeriod = this.checked ? 1 : 0;
+        nurseriesTable.ajax.reload();
+    });
+
+    $('#active').on('change', function () {
+        active = this.value;
+        nurseriesTable.ajax.reload();
+    });
+
+    $('#invoice-status').on('change', function () {
+        invoiceStatus = this.value;
+        nurseriesTable.ajax.reload();
+    });
+
+    $('#data-table-search').keyup(function () {
+        nurseriesTable.search(this.value).draw();
+    })
+});//end of document ready
+</script>
+@endpush
+```
+
+* MUST be inside `index.blade.php`
+* MUST NOT be inside Vite JS
+* Use Blade routes inside script
+* Follow this exact admin index pattern
+* Translatable models (localized `name` + `addSelect` in `data()`): see [.cursor/rules/laravel-translatable-datatables.mdc](.cursor/rules/laravel-translatable-datatables.mdc)
+
+## Filtering (ajax `data` and filter controls)
+
+- Declare **one `let` variable per filter** at the start of the `$(function () { ... })` block (e.g. `let countryId;`, `let tagId;`). Initialize from the server when needed (e.g. `let inTrialPeriod = "{{ request()->in_trial_period }}";`). **Do not** require initializing every filter to `'0'` (or another sentinel) just to match the “All” row—**`let requiresExpiry;` (no initializer) is fine** when the controller omits or ignores missing/undefined request params for “no filter”. Use `= '0'` (or server-driven defaults) only when you deliberately need the first AJAX request to send that exact value.
+- **Filter variable names (JavaScript):** use short field names that match the concept (`type`, `status`, `countryId`)—**do not** prefix with the model or page (`employeeRequestStatus`, `employeeRequestType`). Pair each `d.*` key with what the controller reads (e.g. `d.status = status` and `request()->status`).
+- In `ajax.data`, pass those variables to the request only: `d.country_id = countryId;` — keep `data` a thin mapping from state to parameters. **Do not** use `$('#…').val()` or any DOM/query read inside `data`.
+- On the filter control, use **`on('change', ...)`** (or the correct event): assign the variable from the control (`countryId = this.value;`, checkbox to `0`/`1`, etc.), then call `yourTable.ajax.reload()`.
+- For the global search input, keep using **`#data-table-search`** with `keyup` and `table.search(this.value).draw()` as in the canonical example and the filter snippets below.
+
+### Filter control `id` naming (HTML)
+
+On the index filter row, **`id` values must stay short and semantic**: kebab-case, name the **field** (what the control selects), then `-id` when it is a foreign-key style select—same idea as the canonical **`governorate-id`** and **`area-id`**.
+
+- Do **not** put **`filter`** in the id (the control is already on a filter row; the word adds noise).
+- Do **not** use long redundant prefixes such as **`company-assets-filter-…`** (plural page slug + `filter` + field).
+
+✖ `id="company-assets-filter-asset-type-id"`  
+✖ `id="company-assets-filter-storage-location-id"`  
+✔ `id="company-asset-type-id"`  
+✔ `id="storage-location-id"`
+
+In scripts, bind with the same id: `$('#company-asset-type-id').on('change', …)` — not `$('#company-assets-filter-asset-type-id')`.
+
+**Never** read filter values from the DOM inside `ajax.data`. Do **not** call jQuery on controls there—no `$('#…').val()`, `$('#…').prop()`, `document.querySelector`, etc. `ajax.data` must only map **already-held** variables (`let` at the top of the block) onto `d.*`. Reading the DOM in `ajax.data` duplicates the source of truth and is harder to maintain.
+
+✖
+
+```js
+data: function (d) {
+    d.tag_id = $('#recommendation-tag-id').val();
+}
+```
+
+✖ (multiple filters—the same rule: no `.val()` or selectors in `data`)
+
+```js
+data: function (d) {
+    d.company_asset_type_id = $('#company-assets-filter-asset-type-id').val();
+    d.storage_location_id = $('#company-assets-filter-storage-location-id').val();
+    d.brand_id = $('#company-assets-filter-brand-id').val();
+    d.product_model_id = $('#company-assets-filter-product-model-id').val();
+}
+```
+
+Those `$('#…')` ids are also invalid naming—use `company-asset-type-id`, `storage-location-id`, etc. (see **Filter control `id` naming**).
+
+✔
+
+```blade
+let tagId;
+
+ajax: {
+    url: '{{ route('admin.recommendations.data') }}',
+    data: function (d) {
+        d.tag_id = tagId;
+    }
+},
+
+$('#recommendation-tag-id').on('change', function () {
+    tagId = this.value;
+    recommendationsTable.ajax.reload();
+});
+```
+
+For several filters, declare one `let` per filter, assign in each control’s `on('change', …)` (or initial sync from the control once if needed), and pass only those variables in `ajax.data`—never `$('#filter-id').val()` inside `data`.
+
+Use the same `dom`, `buttons`, `serverSide`, `processing`, `language`, and `drawCallback` shape as the canonical example above (adjust export `columns` in `buttons` if your table has different column indexes; omit `lazyLoad` in `drawCallback` when not needed).
+
+## Variations (do not repeat the full init)
+
+Build on the **canonical example** at the top of this file. Do not paste a second full `DataTable({ ... })` unless you truly need a different structure.
+
+- **Translatable `name`**: set the localized name column to `name: 'translations.name'` (and wire `addSelect` in the controller per [.cursor/rules/laravel-translatable-datatables.mdc](.cursor/rules/laravel-translatable-datatables.mdc)).
+
+```js
+{data: 'name', name: 'translations.name', sortable: false},
+```
+
+- **Optional** before `DataTable(...)`: `$('#your-table-id tbody').empty();` when the table markup requires it.
+
+- **Narrower `ajax.data` and fewer filters**: follow the **tagId** snippet above; keep the same options object shape as the canonical example for everything not shown in the snippet.
+
+**Checklist** when adapting: swap table id and instance variable name; set `ajax.url` to `route('admin.*.data')`; define `columns` and `order`; add one `let` per filter with matching keys in `ajax.data` (variables only—no jQuery/DOM in `data`) and `on('change', ...)` handlers wired to short **`id`s** (no `filter` in the id, no `company-assets-filter-…` style); wire `#data-table-search` with `keyup` like the canonical example.
+
+## `index.blade.php` filter row (search and other filters)
+
+* **`id` attributes** on filter selects/inputs: follow **Filter control `id` naming** above (`company-asset-type-id`, not `company-assets-filter-asset-type-id`).
+* When the table has **only** a search input and **no** other filter controls (dropdowns, toggles, date ranges, etc.), prefer wrapping the search in **`col-md-6`** instead of full width **`col-md-12`**, so the field does not stretch across the entire row.
+* When there **are** additional filters, use the usual grid split (e.g. multiple `col-md-*` columns) as needed; the search-only `col-md-6` preference does not apply when other filters share the row.

@@ -1,0 +1,59 @@
+---
+description: Blade @lang keys must use the lang file for the entity (model) the feature belongs to
+globs: **/*.blade.php
+alwaysApply: false
+---
+
+# Blade translation namespaces (entity-aligned keys)
+
+Translation keys are grouped by **entity** (matching `resources/lang/{locale}/{entity}.php`). Use the file that matches what the UI is about—not a parent or unrelated module.
+
+## Rule
+
+- The **first segment** of `@lang('segment.key')` must match the **entity** for that screen or label (e.g. `brands`, `models`, `banks`, `employees`).
+- Do **not** put a string under `models.*` when it describes **Brand**; put it under `brands.*`.
+- **Dynamic suffix keys** (e.g. `__('company_assets.status_' . strtolower($value))` when keys are `status_active`, `status_inactive` in the same entity file) are allowed when the suffix matches persisted or enum values and the **first segment** remains the correct entity—same namespace rule as static keys.
+
+## Related models (foreign keys, association columns)
+
+When a label names or describes another **persisted entity** (e.g. table column for `event_id`, “Event” header above related event titles), use that **related** model’s lang file—not the current screen’s entity file.
+
+✔ Targets index column for the related event:
+
+```blade
+@lang('events.event')
+```
+
+✖ Do not duplicate the same meaning under the parent entity only because the Blade file is under `targets/`:
+
+```blade
+@lang('targets.event')
+```
+
+The screen can still be “targets”; the **word** belongs to **events** when it refers to the Event model.
+
+## Examples
+
+✔ Brand UI (brand views, brand fields, brand table headers):
+
+```blade
+@lang('brands.brand')
+```
+
+✖ Wrong namespace for the same meaning:
+
+```blade
+@lang('models.brand')
+```
+
+✔ Model (car/product model) UI:
+
+```blade
+@lang('models.model')
+```
+
+## When editing
+
+- If the Blade file lives under `.../company/brands/`, prefer `brands.*` keys.
+- If it lives under `.../company/models/`, prefer `models.*` keys.
+- Shared layouts: still use the entity file that owns the **concept** (e.g. a sidebar link to “Brands” → `brands.*`, not `models.*`).

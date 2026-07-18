@@ -1,0 +1,26 @@
+<?php
+
+return [
+    'classrooms' => 'Classrooms',
+    'classroom' => 'Classroom',
+    'name' => 'Name',
+    'teacher' => 'Teacher',
+    'type' => 'Type',
+    'types' => 'Types',
+    'start_date' => 'Start Date',
+    'end_date' => 'End Date',
+    'individual' => 'Individual',
+    'group' => 'Group',
+    'number_of_students' => 'Number of Students',
+    'information' => 'Information',
+    'dates' => 'Dates',
+    'classroom_details' => 'Classroom Details',
+    'details' => 'Details',
+    'students_list' => 'Students List',
+    'students_count' => 'Student(s)',
+    'no_students' => 'No Students',
+    'no_students_message' => 'There are no students enrolled in this classroom yet.',
+    'duration' => 'Duration',
+    'days' => 'Days',
+    'branch' => 'Branch',
+];

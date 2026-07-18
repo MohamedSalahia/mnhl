@@ -1,0 +1,92 @@
+---
+description: Controllers — validation, action order, Yajra DataTables `data()` cells via Blade; see laravel-validation-request.mdc
+globs:
+  - "**/Http/Controllers/**/*.php"
+alwaysApply: false
+---
+
+# Laravel controllers
+
+## Validation
+
+Do **not** define HTTP input validation rules inside controllers. Put them in **Form Request** classes under `app/Http/Requests/` and type-hint the request on the action.
+
+### Forbidden in controllers
+
+- `$request->validate([...])`
+- `$this->validate([...])`
+- `Validator::make(...)` for **incoming request** validation
+
+### Required
+
+- Type-hint the Form Request: e.g. `public function store(UserRequest $request)`
+- Implement `rules()` (and related) only in that request class
+
+### Calculated or derived input (e.g. `order`)
+
+When a value is **not** supplied by the client (or must be **replaced** by server-side logic)—**sort `order`**, next sequence number, normalized default, etc.—**do not** compute it in the controller. Put it in the Form Request’s **`prepareForValidation()`** using **`$this->merge([...])`** so the merged payload is what **`rules()`** and the action see. Placement and ordering of `prepareForValidation` follow [.cursor/rules/laravel-validation-request.mdc](.cursor/rules/laravel-validation-request.mdc).
+
+### Form Request naming
+
+- **`store`**, **`update`**, and other **standard resource CRUD** on the main model (`create`, `edit`, …): use **one** **`{ModelName}Request`** (StudlyCase), e.g. `UserRequest`, `NurseryRequest`, `RatingRequest`. Type-hint that same class on `store`, `update`, etc. Do **not** add per-method request classes for these actions.
+- When **create vs update** validation differs, branch inside **`rules()`** (e.g. `PUT` / `PATCH` overrides) in that single request class — see [.cursor/rules/laravel-validation-request.mdc](.cursor/rules/laravel-validation-request.mdc). Do **not** introduce a separate `{ModelName}UpdateRequest` for normal updates.
+- **Custom actions** (different payload or rules than the main resource): **`{ModelName}{ActionName}Request`**, where `{ActionName}` is PascalCase derived from the **use case**, not from HTTP verbs.
+  - Example: **`editBasicInformation`** and **`updateBasicInformation`** both type-hint **`UserBasicInformationRequest`** (not `UserEditBasicInformationRequest` / `UserUpdateBasicInformationRequest`). Strip leading `edit` / `update` / `store` from the method name; the remainder is `{ActionName}` in PascalCase (`BasicInformation` → `{ModelName}BasicInformationRequest`).
+  - Other one-off actions: e.g. **`approve`** → `OrderApproveRequest`.
+- **Anti-pattern:** do not use `*StoreRequest`, `*UpdateRequest`, `*CreateRequest`, or `*EditRequest` when the endpoint is ordinary CRUD on that model — use **`{ModelName}Request`** instead.
+
+### Non-model controllers
+
+When there is no single Eloquent model, name the request after the **main resource or use case** (match patterns already in `app/Http/Requests/`, e.g. settings or invoice actions).
+
+## View data — use `compact()`
+
+When passing data to **`view()`** (including inside **`response()->json([... 'view' => view(...)->render()])`**, `redirect()->view()` patterns, and similar), pass variables with **`compact('name1', 'name2', ...)`** — do **not** use an inline associative array like `view('x', ['key' => $value])` unless there is a strong one-off reason.
+
+- If route model binding or local variables use a different name than the Blade expects (e.g. binding `$user`, view expects `currentUser`), set the intended name on its own line, then `compact` it: `$currentUser = $user; return view('...', compact('currentUser'));`
+- This applies to **all** `Http/Controllers` code, not only Admin.
+
+## Action order
+
+Use this order in resource-style controllers so files stay predictable (Admin, API, Nursery, etc.). Laravel does not enforce it; this is a **readability convention**.
+
+1. **`index`**, **`data`** (and any other `*Data` / AJAX index endpoints for that controller).
+2. **`create`**, **`store`**.
+3. **`show`**.
+4. **Extra actions** that load related data for UI or sub-resources (e.g. nested lists, modal data, `banks()`, `employee()`) — **after** `show`, **before** `edit`.
+5. **`edit`**, **`update`**.
+6. **`destroy`** and private helpers such as **`delete(...)`** last, as appropriate.
+
+Place **`static function middleware()`** at the **top** of the class (before actions), per Laravel convention.
+
+## DataTables — controller `data()` (Yajra)
+
+- In `DataTables::of(...)->addColumn()`, `editColumn()`, and similar callbacks, **do not** build HTML with string concatenation (no concatenated anchor tags, badges, or other markup in PHP strings).
+- Return a **Blade view** for any cell that needs markup (links, buttons, badges, partials):
+
+```php
+return view('admin.posts.data_table.actions', compact('post'));
+```
+
+or the string path form Yajra accepts:
+
+```php
+->addColumn('actions', 'admin.posts.data_table.actions')
+```
+
+- Plain text, dates, and em dashes (`—`) may stay inline in the closure when they are **not** HTML.
+- Register every column that outputs HTML in `->rawColumns([...])`.
+- Put reusable cell markup under `resources/views/**/data_table/` (e.g. `action_url.blade.php`, `tags.blade.php`).
+
+**Blade index scripts and filters:** [.cursor/rules/datatables.mdc](.cursor/rules/datatables.mdc)
+
+**Translatable `name` / translation subqueries:** [.cursor/rules/laravel-translatable-datatables.mdc](.cursor/rules/laravel-translatable-datatables.mdc)
+
+## Request input in controllers
+
+- Follow **[.cursor/rules/laravel-php-style.mdc](.cursor/rules/laravel-php-style.mdc) — HTTP request**: use **`request()->event_id`** (and `request()->…` for other fixed keys), not `request('event_id')`, unless the key is **dynamic** (then `request($key)` is appropriate)
+
+## Related rules
+
+- Validation request body: [.cursor/rules/laravel-validation-request.mdc](.cursor/rules/laravel-validation-request.mdc) (`rules()`, `RuleFactory`, PUT/PATCH, booleans, calculated fields merged in `prepareForValidation`, etc.)
+- PHP style in controllers: [.cursor/rules/laravel-php-style.mdc](.cursor/rules/laravel-php-style.mdc) (braces, request access, `}// end of methodName`).

@@ -1,0 +1,48 @@
+---
+description: Translatable models in DataTables data() queries and index column definitions
+globs:
+  - "**/Http/Controllers/**/*.php"
+  - "**/resources/views/**/index.blade.php"
+alwaysApply: false
+---
+
+# TRANSLATABLE MODELS + DATATABLES
+
+When the main model stores localized text in a `*Translation` table, wire **server-side DataTables** like this.
+
+## Controller `data()`
+
+- Use `Model::query()` and follow [laravel-query-style.mdc](laravel-query-style.mdc): chain `with()` and `withCount()` (when needed) **before** scopes such as `whenCompanyId` / `whenCountryId`, then add the localized `name` via `addSelect`.
+- Eager-load the relation the model actually defines (often `translations`, plural).
+- Add a scalar `name` column with a subquery on the translation model for `app()->getLocale()`.
+
+```php
+$jobTitles = JobTitle::query()
+    ->with(['translations'])
+    ->withCount(['employees'])
+      ->addSelect([
+            'name' => JobTitleTranslation::query()
+                ->select('name')
+                ->whereColumn('job_title_id', 'job_titles.id')
+                ->where('locale', app()->getLocale())
+                ->take(1),
+        ])
+    ->whenCompanyId(selected_company()->hash_id);
+
+return DataTables::of($jobTitles)
+    // ...
+    ->toJson();
+```
+
+- Adjust `whereColumn` foreign key and parent table name to match the model (`area_id` / `areas.id`, etc.).
+
+## `index.blade.php` DataTable columns
+
+- JSON field remains `name`; Yajra sorts/filters by the translation table using the `translations` relation name:
+
+```js
+{ data: 'name', name: 'translations.name' },
+```
+
+- Prefer `sortable: false` on that column **unless** you implement explicit ordering (e.g. `orderColumn` on the DataTables builder). Many admin indexes use `sortable: false` for translated names.
+- If global search must match translated `name`, you may need `filterColumn('name', ...)` / joins—see [app/Http/Controllers/Company/EmployeeController.php](app/Http/Controllers/Company/EmployeeController.php) for `filterColumn` / `orderColumn` examples on non-translation columns.

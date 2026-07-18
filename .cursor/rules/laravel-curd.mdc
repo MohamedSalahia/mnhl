@@ -1,0 +1,18 @@
+---
+description: Laravel CRUD — no bulk delete unless explicitly requested
+globs: **/*.blade.php
+alwaysApply: false
+---
+
+# Laravel CRUD (Laravel)
+
+Do **not** add **bulk delete** (or bulk actions) to CRUD unless the user **explicitly** asks for it.
+
+## Do not add by default
+
+- **Bulk delete UI**: form posting to `*.bulk_delete`, hidden `record_ids` / `.record-ids`, `#bulk-delete` button, `@lang('site.bulk_delete')` (or similar).
+- **Per-row selection column**: checkboxes with classes like `record__select`, `record__select-all`, or ids like `record__select{{ $id }}` used only for bulk selection.
+
+## When the user requests bulk delete
+
+Then add the matching **route**, **controller** action, **permission** checks, **DataTable** wiring (if applicable), and **translations** in line with existing admin modules.

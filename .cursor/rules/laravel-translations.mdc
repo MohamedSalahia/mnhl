@@ -1,0 +1,32 @@
+---
+description: No hardcoded UI strings; lang files and meta for JS
+alwaysApply: true
+---
+
+# TRANSLATIONS
+
+✔
+```php
+__('messages.success')
+```
+
+✔ (Blade)
+```blade
+@lang('messages.success')
+```
+
+✖
+```php
+echo "Success";
+```
+
+- NO hardcoded text
+- ALWAYS use lang files
+- PHP/Blade: use `@lang()`
+- JavaScript: use meta tags  
+  ```html
+  <meta name="trans-key" content="{{ @lang('messages.success') }}">
+  ```
+  ```js
+  $('meta[name="trans-key"]').attr('content')
+  ```

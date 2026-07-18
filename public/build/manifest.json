@@ -1,0 +1,137 @@
+{
+  "_preload-helper-DPi8upcZ.js": {
+    "file": "assets/preload-helper-DPi8upcZ.js",
+    "name": "preload-helper"
+  },
+  "public/admin_assets/custom/js/assessments.js": {
+    "file": "assets/assessments-DeyeNO8l.js",
+    "name": "assessments",
+    "src": "public/admin_assets/custom/js/assessments.js",
+    "isDynamicEntry": true
+  },
+  "public/admin_assets/custom/js/countries.js": {
+    "file": "assets/countries-DfNUSYQy.js",
+    "name": "countries",
+    "src": "public/admin_assets/custom/js/countries.js",
+    "isDynamicEntry": true
+  },
+  "public/admin_assets/custom/js/curricula.js": {
+    "file": "assets/curricula-BWogZEqc.js",
+    "name": "curricula",
+    "src": "public/admin_assets/custom/js/curricula.js",
+    "isDynamicEntry": true
+  },
+  "public/admin_assets/custom/js/index.js": {
+    "file": "assets/index-CxwpOWCd.js",
+    "name": "index",
+    "src": "public/admin_assets/custom/js/index.js",
+    "isDynamicEntry": true
+  },
+  "public/admin_assets/custom/js/lessons.js": {
+    "file": "assets/lessons-CZ6AJD3u.js",
+    "name": "lessons",
+    "src": "public/admin_assets/custom/js/lessons.js",
+    "isDynamicEntry": true
+  },
+  "public/admin_assets/custom/js/organizations.js": {
+    "file": "assets/organizations-FmwaciLH.js",
+    "name": "organizations",
+    "src": "public/admin_assets/custom/js/organizations.js",
+    "isDynamicEntry": true
+  },
+  "public/admin_assets/custom/js/roles.js": {
+    "file": "assets/roles-C2nuwE54.js",
+    "name": "roles",
+    "src": "public/admin_assets/custom/js/roles.js",
+    "isDynamicEntry": true
+  },
+  "public/admin_assets/custom/js/shared/index.js": {
+    "file": "assets/index-B9vYx_IZ.js",
+    "name": "index",
+    "src": "public/admin_assets/custom/js/shared/index.js",
+    "isDynamicEntry": true
+  },
+  "public/admin_assets/custom/js/shared/theme.js": {
+    "file": "assets/theme-DXRV3XsW.js",
+    "name": "theme",
+    "src": "public/admin_assets/custom/js/shared/theme.js",
+    "isDynamicEntry": true
+  },
+  "public/admin_assets/custom/js/students.js": {
+    "file": "assets/students-BqDTlGuw.js",
+    "name": "students",
+    "src": "public/admin_assets/custom/js/students.js",
+    "isDynamicEntry": true
+  },
+  "public/admin_assets/custom/js/teachers.js": {
+    "file": "assets/teachers-BaX_xOaZ.js",
+    "name": "teachers",
+    "src": "public/admin_assets/custom/js/teachers.js",
+    "isDynamicEntry": true
+  },
+  "public/web_assets/custom/js/index.js": {
+    "file": "assets/index-CAKrq3gK.js",
+    "name": "index",
+    "src": "public/web_assets/custom/js/index.js",
+    "isDynamicEntry": true
+  },
+  "public/web_assets/custom/js/shared/index.js": {
+    "file": "assets/index-CMrqpqu2.js",
+    "name": "index",
+    "src": "public/web_assets/custom/js/shared/index.js",
+    "isDynamicEntry": true
+  },
+  "resources/css/admin/app.css": {
+    "file": "assets/app-DbkkilkK.css",
+    "src": "resources/css/admin/app.css",
+    "isEntry": true
+  },
+  "resources/css/app.css": {
+    "file": "assets/app-DP7lyanZ.css",
+    "src": "resources/css/app.css",
+    "isEntry": true
+  },
+  "resources/js/admin/app.js": {
+    "file": "assets/app-CNRqD_XC.js",
+    "name": "app",
+    "src": "resources/js/admin/app.js",
+    "isEntry": true,
+    "imports": [
+      "_preload-helper-DPi8upcZ.js"
+    ],
+    "dynamicImports": [
+      "resources/js/echo.js",
+      "public/admin_assets/custom/js/shared/index.js",
+      "public/admin_assets/custom/js/shared/theme.js",
+      "public/admin_assets/custom/js/index.js",
+      "public/admin_assets/custom/js/countries.js",
+      "public/admin_assets/custom/js/curricula.js",
+      "public/admin_assets/custom/js/roles.js",
+      "public/admin_assets/custom/js/organizations.js",
+      "public/admin_assets/custom/js/students.js",
+      "public/admin_assets/custom/js/lessons.js",
+      "public/admin_assets/custom/js/teachers.js",
+      "public/admin_assets/custom/js/assessments.js"
+    ]
+  },
+  "resources/js/app.js": {
+    "file": "assets/app-BVjzo5BU.js",
+    "name": "app",
+    "src": "resources/js/app.js",
+    "isEntry": true,
+    "imports": [
+      "_preload-helper-DPi8upcZ.js"
+    ],
+    "dynamicImports": [
+      "resources/js/echo.js",
+      "public/web_assets/custom/js/shared/index.js",
+      "public/web_assets/custom/js/index.js"
+    ]
+  },
+  "resources/js/echo.js": {
+    "file": "assets/echo-DXwQxw-w.js",
+    "name": "echo",
+    "src": "resources/js/echo.js",
+    "isDynamicEntry": true
+  }
+}

@@ -1,0 +1,386 @@
+---
+description: Blade form fields — explicit server bind; comments per field; grid and control conventions
+globs: **/*.blade.php
+alwaysApply: false
+---
+
+# Blade form fields
+
+## Explicit bind only (no `old()`)
+
+- **Do not** use **`old()`**, **`old('...')`**, **`@if (old(...))`**, or **`data_get(old(...))`** in Blade for **`value`**, **`selected`**, **`checked`**, or any conditional on repopulated input. Bind from **route model** fields (e.g. **`$user->email`** on edit), **named variables** the controller passes (e.g. **`$name ?? ''`**), or **Livewire** / **Inertia**-style props.
+- **Create** forms without a model: use **empty** defaults (e.g. **`value=""`**, **`value="1"`** where fixed default), first **empty** `<option>`, and **unchecked** checkboxes unless the domain requires otherwise.
+- Keep views aligned with **Livewire / SPA** navigation and a single source of truth from the server (no session-field repopulation in Blade for failed validation).
+
+- Wrap each **logical field** (or one **translatable / repeated field group**) in a Blade comment **immediately above** the outermost markup for that field: `{{--field_key--}}`.
+- Use a short, stable key (usually the main `name` attribute or domain concept): e.g. `{{--name--}}`, `{{--email--}}`, `{{--password--}}`. Do **not** add a field comment for **submit** `<button>` elements (primary Save/Submit, delete, confirm, etc.)—they are not marked with `{{--submit--}}` or any similar key.
+- Keys use **snake_case** when multiple words are needed (e.g. `{{--start_date--}}`).
+- One comment per field **block**: the comment opens the section; the closing `</div>` / row does not need a matching closing comment.
+- For `@foreach` over languages (or similar), put **one** `{{--name--}}` (or `{{--code--}}`) above the **row** that contains the loop, not inside each iteration.
+- **`autofocus` in `@foreach` over languages (or similar)**: If a text `<input>` should receive initial focus and uses **`autofocus`**, apply it **only on the first iteration**: **`{{ $loop->first ? 'autofocus' : '' }}`** (ternary in `{{ }}`, same style as optional `disabled` / `checked`). Do **not** output the bare **`autofocus`** attribute on every iteration—only one control may be focused, and duplicate **`autofocus`** is invalid / unpredictable.
+- The field wrapper may use **`form-group`** (Bootstrap 4) or **`mb-3`** (Bootstrap 5) for vertical spacing—match the Bootstrap version and patterns already used in that view. **`form-group`** supplies spacing for that field; **`mb-3`** is the B5 substitute when you are **not** using **`form-group`** on that block.
+- **`form-group` and `mb-3` are mutually exclusive in the same field hierarchy**: **never** add **`mb-3`** anywhere (same element, a parent **`col-*`**, **`row`**, or any other wrapper between `{{--key--}}` and the control) when a **`form-group`** wraps the **`input`**, **`select`**, **`textarea`**, or the usual **`label` + control** group for that field. Use plain **`col-*`** (e.g. **`col-md-6`**) without **`mb-3`** when **`form-group`** sits inside the column. For a **standalone** field with no `row`/`col-*`, the outer wrapper is either **`form-group`** or **`mb-3`**, not both—the ✖ examples below apply to that case too. The `{{--key--}}` comment stays directly above that outer field wrapper (whether it is `form-group`, `mb-3`, or a `row` that groups multiple columns; see grid rule below).
+- **Grid (`row` / `col-*`)**:
+    - **Anti-pattern**: a `<div class="row">` whose **only** field block is a single `col-*` wrapper (including `col-12`)—redundant grid; use `form-group` or `mb-3` directly under the `{{--key--}}` comment. This is **not** a ban on `col-12` in every situation.
+    - **Valid**: `col-12` inside a `row` that also has **other** `col-*` siblings (e.g. `col-md-6` + `col-md-6` + `col-12` in one flex row) when you intentionally mix full-width and split columns in the same row.
+    - **Preferred** for full-width fields **between** multi-column groups: **close** the `row` after the last field that shares that row with other `col-*` siblings; put full-width fields in **`form-group`** or **`mb-3`** (one or the other, not both) **outside** the `row` **without** `col-*`; **open a new `row`** when the next section has two or more columns again.
+    - Use `row` + `col-*` when there are **two or more** fields on the same row, or when the view already uses a multi-column layout for that section.
+- **Blank line before the comment**: If the line immediately above the `{{--key--}}` comment is not blank (e.g. a parent opening tag like `<div class="row ...">`, or closing markup from a sibling), insert **one blank line** before the Blade comment so each field block is visually separated. Do not stack the comment directly under non-blank markup without that spacer.
+- **Submit-only / minimal forms** (delete, confirm, icon-only): Do **not** add a field comment above the `<form>` when it only contains `@csrf`, `@method(...)`, and submit button(s)—same as above: submit actions are never labeled with `{{--submit--}}`.
+- **Date fields**: always add the **`date-picker`** class on the input together with **`form-control`** (e.g. `class="form-control date-picker"`), whether the input is `type="date"`, `type="text"`, or whatever the view stack uses for the shared date-picker behavior.
+- **Time fields**: always add the **`time-picker`** class on the input together with **`form-control`** (e.g. `class="form-control time-picker"`) for the shared time-picker behavior.
+- **Date range fields** (start/end in one control or paired range UX): always add the **`date-range-picker`** class on the input together with **`form-control`** (e.g. `class="form-control date-range-picker"`).
+- **Select fields**: always add the **`select2`** class on `<select>` together with **`form-control`** (e.g. `class="form-control select2"`) for the shared Select2 behavior—form dropdowns, index filters, and any other `<select>`.
+- **Conditional attributes on elements** (`disabled`, `readonly`, `checked`, `selected`, etc.): Do **not** use Blade `@if` / `@elseif` / `@endif` **inside** an opening tag (e.g. `<select ... @if (! $foo) disabled @endif>`). Use a **ternary** inside `{{ }}` so the attribute is one expression: e.g. `{{ $condition ? 'disabled' : '' }}`, `{{ $condition ? 'readonly' : '' }}`, `{{ $condition ? 'checked' : '' }}`—same idea as the lone-checkbox `checked` example below. Do **not** split the tag with inline `@if` for a single optional attribute.
+- **Index pages with DataTable** (filter row above a server-side DataTable / `table.datatable`): Do **not** add a `<label>` above filter controls. Use **`placeholder`** on the search input (e.g. `@lang('site.search')`). For **`<select>`** filters, convey meaning with the **first `<option>`** (the “all / no filter” row)—often `value="0"` when the backend treats `0` as omitted, with text like `@lang('site.all')` plus the domain noun when it reads clearly (e.g. `@lang('site.all') @lang('tags.tags')`); align `value` and AJAX `data` with what controllers and `scopeWhen*` / `when()` treat as “no filter”. Match **other admin `index.blade.php`** files that use the same DataTable filter pattern in this project. **Filter `row` utilities**: reuse the same **`class`** on the filter wrapper **`row`** as **peer** index views in the same app area (e.g. **`resources/views/admin/`** vs nursery)—most use plain **`row`**; add **`mb-4`**, **`align-items-end`**, or other spacing only when those peers do for the same card section. **Do not** treat a fixed combo from examples below (e.g. **`row mb-4 align-items-end`**) as required if it diverges from the rest of the index pages.
+- **Enum- or constant-backed filter `<select>` options** (e.g. status): Use `@foreach` with an inline array of class constants when you need a fixed display order; alternatively use sorted `SomeEnum::getConstants()` (or similar) for a single source of truth, accepting that reflection order is undefined unless you sort. For option labels, when the entity lang file defines keys like `status_active`, `status_inactive`, use `__('entity.status_' . strtolower($value))` (keep **`strtolower()`** when stored values might be mixed case). The first segment of the translation key must still match the entity file—see **blade-translation**.
+
+✔ (two fields on one row: use `row` + `col-*`)
+```blade
+<div class="row">
+
+    {{--name--}}
+    <div class="col-md-6">
+        <div class="form-group">
+            <label>@lang('users.name') <span class="text-danger">*</span></label>
+            <input type="text" name="name" class="form-control" value="{{ $name ?? '' }}" required autofocus>
+        </div>
+    </div>
+
+    {{--email--}}
+    <div class="col-md-6">
+        <div class="form-group">
+            <label>@lang('users.email') <span class="text-danger">*</span></label>
+            <input type="email" name="email" class="form-control" value="{{ $email ?? '' }}">
+        </div>
+    </div>
+
+</div>
+```
+
+✔ (close `row` after split columns; full-width `mb-3` without `col-*`; new `row` for the next multi-column group)
+```blade
+<div class="row">
+
+    {{--name--}}
+    <div class="col-md-6 mb-3">
+        <label class="form-label">@lang('users.name')</label>
+        <input type="text" name="name" class="form-control" value="{{ $name ?? '' }}">
+    </div>
+
+    {{--email--}}
+    <div class="col-md-6 mb-3">
+        <label class="form-label">@lang('users.email')</label>
+        <input type="email" name="email" class="form-control" value="{{ $email ?? '' }}">
+    </div>
+
+</div>
+
+{{--notes--}}
+<div class="mb-3">
+    <label class="form-label">@lang('users.notes')</label>
+    <textarea name="notes" class="form-control" rows="3">{{ $notes ?? '' }}</textarea>
+</div>
+
+<div class="row">
+
+    {{--code--}}
+    <div class="col-md-4 mb-3">
+        <label class="form-label">@lang('users.code')</label>
+        <input type="text" name="code" class="form-control" value="{{ $code ?? '' }}">
+    </div>
+
+    {{--department--}}
+    <div class="col-md-4 mb-3">
+        <label class="form-label">@lang('users.department')</label>
+        <input type="text" name="department" class="form-control" value="{{ $department ?? '' }}">
+    </div>
+
+    {{--location--}}
+    <div class="col-md-4 mb-3">
+        <label class="form-label">@lang('users.location')</label>
+        <input type="text" name="location" class="form-control" value="{{ $location ?? '' }}">
+    </div>
+
+</div>
+```
+
+✔
+```blade
+{{--name--}}
+<div class="form-group">
+    <label>@lang('classrooms.name') <span class="text-danger">*</span></label>
+    <input type="text" name="name" class="form-control" autofocus value="{{ $name ?? '' }}" required>
+</div>
+```
+
+✔
+```blade
+{{--name--}}
+<div class="mb-3">
+    <label class="form-label" for="name">@lang('users.name') <span class="text-danger">*</span></label>
+    <input id="name" type="text" name="name" class="form-control" value="{{ $name ?? '' }}" required>
+</div>
+```
+
+✖ (`form-group` **and** `mb-3` on the same outer wrapper—`form-group` already spaces stacked fields; pick one)
+```blade
+{{--name--}}
+<div class="form-group mb-3">
+    <label>@lang('users.name')</label>
+    <input type="text" name="name" class="form-control" value="{{ $name ?? '' }}">
+</div>
+```
+
+✖ (`mb-3` on **`col-*`** (or any parent) **and** inner **`form-group`** around the control—redundant; remove **`mb-3`** from the column)
+```blade
+{{--search--}}
+<div class="col-12 col-md-6 mb-3">
+    <div class="form-group">
+        <input type="text" id="data-table-search" class="form-control" placeholder="@lang('site.search')">
+    </div>
+</div>
+```
+
+✔
+```blade
+{{--start_date--}}
+<div class="form-group">
+    <label>@lang('subscription_types.start_date') <span class="text-danger">*</span></label>
+    <input type="text" name="start_date" class="form-control date-picker" value="{{ $startDate ?? '' }}">
+</div>
+```
+
+✔
+```blade
+{{--starts_at--}}
+<div class="form-group">
+    <label>@lang('lessons.starts_at') <span class="text-danger">*</span></label>
+    <input type="text" name="starts_at" class="form-control time-picker" value="{{ $startsAt ?? '' }}">
+</div>
+```
+
+✔
+```blade
+{{--date_range--}}
+<div class="form-group">
+    <label>@lang('lessons.date_range')</label>
+    <input type="text" name="date_range" class="form-control date-range-picker" placeholder="@lang('lessons.date_range')" value="{{ $dateRange ?? '' }}">
+</div>
+```
+
+✔
+```blade
+{{--status--}}
+<div class="form-group">
+    <label>@lang('users.status')</label>
+    <select name="status" class="form-control select2">
+        ...
+    </select>
+</div>
+```
+
+✔ (lone checkbox: no `row` / `col-*`)
+```blade
+{{--has_specific_date--}}
+<div class="form-group">
+    <input type="hidden" name="has_specific_date" value="0">
+    <div class="custom-control custom-checkbox">
+        <input type="checkbox" class="custom-control-input" name="has_specific_date" value="1" id="has_specific_date"
+            {{ $hasSpecificDate ? 'checked' : '' }}>
+        <label class="custom-control-label" for="has_specific_date">@lang('subscription_types.has_specific_date')</label>
+    </div>
+</div>
+```
+
+✔ (two related fields on one row: one `row`, two columns)
+```blade
+<div class="row" id="subscription-type-dates">
+
+    {{--start_date--}}
+    <div class="col-md-6">
+        <div class="form-group">
+            <label>@lang('subscription_types.start_date') <span class="text-danger">*</span></label>
+            <input type="text" name="start_date" class="form-control date-picker" value="{{ $startDate ?? '' }}">
+        </div>
+    </div>
+
+    {{--end_date--}}
+    <div class="col-md-6">
+        <div class="form-group">
+            <label>@lang('subscription_types.end_date') <span class="text-danger">*</span></label>
+            <input type="text" name="end_date" class="form-control date-picker" value="{{ $endDate ?? '' }}">
+        </div>
+    </div>
+
+</div>
+```
+
+✔ (`autofocus` only on first language—use `$loop->first`)
+```blade
+{{--name--}}
+<div class="row">
+    @foreach ($activeLanguages as $activeLanguage)
+        <div class="col-md-{{ $activeLanguages->count() == 2 ? '6' : '12' }}">
+            <div class="form-group">
+                <label>@lang('currencies.name') (@lang('languages.' . $activeLanguage->code))<span class="text-danger">*</span></label>
+                <input type="text" name="{{ $activeLanguage->code }}[name]" data-error-name="{{ $activeLanguage->code }}.name"
+                    {{ $loop->first ? 'autofocus' : '' }}
+                    class="form-control"
+                    value="{{ data_get($names, $activeLanguage->code) ?? '' }}"
+                    required
+                >
+            </div>
+        </div>
+    @endforeach
+</div>
+```
+
+✖ (`autofocus` on **every** language iteration—use `$loop->first` instead)
+```blade
+<input type="text" name="{{ $activeLanguage->code }}[name]" class="form-control" autofocus ...>
+```
+
+✔ (filter row: blank line after the parent `row` open, before the first field comment; same between stacked field columns; `row` utilities—match peer index pages, often `row` only)
+```blade
+<div class="row">
+
+    {{--search--}}
+    <div class="col-12 col-sm-6 col-lg-3 mb-3">
+        <label class="form-label" for="family-member-filter-search">@lang('site.search')</label>
+        <input type="search" id="family-member-filter-search" class="form-control" autocomplete="off">
+    </div>
+
+    {{--family_member_filter_relationship--}}
+    <div class="col-12 col-sm-6 col-lg-3 mb-3">
+        <label class="form-label" for="family-member-filter-relationship">@lang('family_members.relationship')</label>
+        <select id="family-member-filter-relationship" class="form-control select2">
+            ...
+        </select>
+    </div>
+</div>
+```
+
+✔ (admin **index + DataTable** filter row: no `<label>`; search = placeholder; `<select>` = first option for “all”)
+```blade
+<div class="row">
+
+    {{--search--}}
+    <div class="col-md-6">
+        <div class="form-group">
+            <input type="text" id="data-table-search" class="form-control" autofocus placeholder="@lang('site.search')">
+        </div>
+    </div>
+
+    {{--tag_id--}}
+    <div class="col-md-6">
+        <div class="form-group">
+            <select id="recommendation-tag-id" class="form-control select2">
+                <option value="0">@lang('site.all') @lang('tags.tags')</option>
+                @foreach ($recommendationTags as $tag)
+                    <option value="{{ $tag->id }}">{{ $tag->name }}</option>
+                @endforeach
+            </select>
+        </div>
+    </div>
+
+</div>
+```
+
+✔ (index **DataTable** filter: enum / constant-backed `<option>` list + `status_{value}` keys in the entity lang file; `use App\Enums\CompanyAssetStatusEnum` in `@php` at the top of the view)
+```blade
+{{--status--}}
+<select id="company-asset-status" class="form-control select2">
+    <option value="0">@lang('site.all') @lang('company_assets.status')</option>
+    @foreach ([
+        CompanyAssetStatusEnum::ACTIVE,
+        CompanyAssetStatusEnum::INACTIVE,
+        CompanyAssetStatusEnum::ASSIGNED,
+    ] as $status)
+        <option value="{{ $status }}">{{ __('company_assets.status_' . strtolower($status)) }}</option>
+    @endforeach
+</select>
+```
+
+✖
+```blade
+<div class="col-md-6">
+    <div class="form-group">
+        <label>@lang('users.name')</label>
+        <input type="text" name="name" ...>
+    </div>
+</div>
+```
+
+✖ (`<select>` without **`select2`**)
+```blade
+{{--status--}}
+<div class="form-group">
+    <label>@lang('users.status')</label>
+    <select name="status" class="form-control">
+        ...
+    </select>
+</div>
+```
+
+✖ (`row` that contains **only one** field block—use `form-group` or `mb-3` only instead of `row` + `col-*`)
+```blade
+{{--fees--}}
+<div class="row">
+    <div class="col-md-6">
+        <div class="form-group">
+            <label>@lang('subscription_types.fees') <span class="text-danger">*</span></label>
+            <input type="number" name="fees" class="form-control" value="{{ $fees ?? '' }}" step="0.01" min="0" required>
+        </div>
+    </div>
+</div>
+```
+
+✔ (same field without extra grid)
+```blade
+{{--fees--}}
+<div class="form-group">
+    <label>@lang('subscription_types.fees') <span class="text-danger">*</span></label>
+    <input type="number" name="fees" class="form-control" value="{{ $fees ?? '' }}" step="0.01" min="0" required>
+</div>
+```
+
+✖ (comment glued to parent open—no blank line)
+```blade
+<div class="row">
+    {{--search--}}
+    <div class="col-12 col-sm-6 col-lg-3 mb-3">
+        ...
+    </div>
+```
+
+✔ (delete form: no field comment — submit `<button>` is never wrapped with `{{--submit--}}`)
+```blade
+<form
+    method="post"
+    action="{{ route('company.documents.destroy', $document) }}"
+    class="ajax-form document-delete-form d-inline"
+>
+    @csrf
+    @method('delete')
+    <button type="submit" class="btn btn-sm btn-danger" title="@lang('site.delete')">
+        <i class="icon-base ti tabler-trash icon-18px"></i>
+    </button>
+</form>
+```
+
+✖ (inline `@if` / `@endif` inside an opening tag for `disabled` or other flags—use a ternary in `{{ }}` instead)
+```blade
+<select id="user-type" class="form-control select2" @if (! $selectedServiceId) disabled @endif>
+    ...
+</select>
+```
+
+✔ (ternary for conditional `disabled`—same pattern for `readonly`, `checked`, etc.)
+```blade
+<select id="user-type" class="form-control select2" {{ ! $selectedServiceId ? 'disabled' : '' }}>
+    ...
+</select>
+```
+
+- Search / filter-only rows on **index** pages and **purely decorative** wrappers do not need a field key unless they represent one logical filter (then use e.g. `{{--search--}}`, `{{--tag_id--}}`). On **DataTable** index pages, prefer **no labels** on those filters—see **Index pages with DataTable** above.

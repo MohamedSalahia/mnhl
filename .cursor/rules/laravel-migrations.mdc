@@ -1,0 +1,69 @@
+---
+description: Laravel migrations — prefer editing create-table migrations; new migrations only when asked; translatable split across files; cross-reference NAMING for filenames and orb php artisan make:migration
+globs:
+  - "**/database/migrations/**/*.php"
+alwaysApply: false
+---
+
+# MIGRATIONS
+
+**Filenames and creating new migration files** (timestamp format, `orb php artisan make:migration`, parent vs translations order) are defined in the **NAMING** rule (`alwaysApply: true`) under **Database migration files — filename and creation**.
+
+## Translatable models: separate migration files
+
+For models that use a `*_translations` table (e.g. Astrotomic Translatable), **never** put `Schema::create` for the parent table and `Schema::create` for the translations table in the **same** migration file.
+
+✔
+```text
+New feature: services + service_translations
+→ orb php artisan make:migration create_services_table
+→ orb php artisan make:migration create_service_translations_table
+→ parent migration runs first (earlier timestamp), translations migration second
+```
+
+✖
+```text
+One file with both Schema::create('services', …) and Schema::create('service_translations', …)
+```
+
+When generating those files, follow **Creating new migration files** in the NAMING rule (two Artisan runs, correct timestamp order).
+
+**Later schema changes** still follow **Default: edit existing migration** (below): edit the **original** create migration for `services` in its file, and the **original** create migration for `service_translations` in its file.
+
+## Default: edit existing migration
+
+When changing schema (add/remove/rename/change columns, indexes, etc.), **edit the migration file that originally creates that table** (e.g. `create_users_table`). Do **not** add a new migration file unless the user explicitly asks for one. This applies equally to **adding**, **changing** (type, nullability, default, etc.), and **renaming** columns — default to editing the original create migration; only create a separate migration file when the user explicitly requests it.
+
+✔
+```text
+User: add column status to users table
+→ edit create_users_table (or the migration that defines users), add status there
+```
+
+✔
+```text
+User: rename email to email_address on users
+→ edit the migration that defines users, rename the column there
+```
+
+✔
+```text
+User: change users.name from string(255) to text
+→ edit the migration that defines users, update the column definition there
+```
+
+✖
+```text
+User: add column status to users table
+→ orb php artisan make:migration add_status_to_users_table (wrong default — edit the create migration unless they asked for a new file)
+```
+
+✖
+```text
+User: rename a column / change column type
+→ orb php artisan make:migration ... (wrong default — edit the create migration unless they explicitly asked for a new migration file)
+```
+
+## New migration file (only when explicitly requested)
+
+If the user clearly asks for a **new** migration (e.g. "create a migration to add status to users", "new migration file to rename ...", "migration to change column type on ..."), create it with **`orb php artisan make:migration`** per the NAMING rule — do not hand-write an empty file with a made-up name.

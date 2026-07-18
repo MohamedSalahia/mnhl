@@ -1,0 +1,184 @@
+---
+description: PHP control structure spacing, brace style, HTTP request / request() input access, method closing, and model scopeWhen{Field} (no model name in scope; generic single-column scopes)
+alwaysApply: true
+---
+
+# PHP Control Structure Style Rules
+
+## Canonical example (multi-line control structure)
+
+✔
+```php
+if ($nursery->packs()->where('pack_id', $packId)->exists()) {
+
+    return response()->json([
+        'errors' => ['pack_id' => [__('packs.pack_already_attached')]],
+    ], 422);
+
+}//end of if
+```
+
+## `if` / `else` / `elseif` (multi-line branches)
+
+When **`if`** has an **`else`** or **`elseif`**, treat **each branch** as its own control structure: if a branch body is **multiple lines**, add an **empty line after the opening `{`** and **before the closing `}`** for that branch. Join **`if`** to **`else`** / **`elseif`** with **`} else {`** or **`} elseif ($condition) {`** on one line — **do not** put **`//end of if`** on that `}` (there is no standalone “end of if” comment before **`else`** / **`elseif`**). Put the trailing comment only on the **final** closing **`}`** of the whole chain: **`}//end of else`** or **`}//end of elseif`** as appropriate.
+
+✔
+```php
+if (!Schema::hasTable('countries')) {
+
+    View::share('serviceCountries', collect());
+
+} else {
+
+    View::share(
+        'serviceCountries',
+        Cache::remember(
+            ViewShareCache::SERVICE_COUNTRIES,
+            now()->addDay(),
+            fn () => $this->resolveServiceCountries()
+        )
+    );
+
+}//end of else
+```
+
+For a **single** `if` with **no** `else`, only **`}//end of if`** appears on the closing `}` (see the canonical example above).
+
+## `do while` (trailing comment on the same line as `} while (...)`)
+
+✔
+```php
+do {
+
+    $index++;
+
+} while ($index < 10);//end of do while
+```
+
+Same brace, blank-line, and trailing-comment rules apply to **`else`**, **`elseif`**, **`for`**, **`foreach`**, **`while`**, and **`do while`**.
+
+## Rules
+
+- Applies to: if, else, elseif, for, foreach, while, do while
+- If a control structure contains **multiple lines**, add an empty line after the opening `{` and before the closing `}` (for **`if` / `else` / `elseif`**, apply this **per branch** — see **`if` / `else` / `elseif` (multi-line branches)** above)
+- If a control structure contains **only one short line** in the body, do **not** add empty lines after `{` or before `}`
+- Every closing block must end with a trailing comment: `//end of if`, `//end of else`, … `//end of do while` — **except** the `}` that is immediately followed by **`else`** or **`elseif`** (use **`} else {`** or **`} elseif ($condition) {`** with **no** `//end of if` on that brace; see **`if` / `else` / `elseif` (multi-line branches)** above)
+- Keep indentation consistent with 4 spaces
+
+## CLASS CLOSING RULES
+
+- Model class must end with:
+} //end of model
+
+- Controller class must end with:
+} //end of controller
+
+- Request class must end with:
+} //end of request
+
+- Enum class must end with:
+} //end of enum
+
+## Method and function closing
+
+- Every **named** class method and every **named** function must end its closing `}` with a trailing comment on the same line: `}// end of methodName` or `}// end of functionName` (match the exact name). Example: `}// end of store`
+- Short anonymous closures (e.g. one-liner `fn () =>` or a small `function () { ... }` inside a chain) do **not** need this
+
+## HTTP request (`Request` / `request()` helper)
+
+- Prefer **direct property access** for top-level keys: `$request->field_name` and `request()->field_name`
+- For the **`request()`** helper, use **`request()->event_id`**, not **`request('event_id')`** (same for any other fixed, single-segment key). The string form `request('key')` is for dynamic keys; for normal inputs prefer object notation on the helper
+- Do **not** use `$request->input('field_name')` when a simple property name works the same way
+- **Exception**: nested keys, array/dot notation, or **dynamic** key names still use `input()`, `get()`, or array access (e.g. `$request->input('items.0.id')`, `$request[$key]`, `request($variableKey)`)
+
+## Model query scopes (`//scope`)
+
+- Place **optional column filters** under the **`//scope`** comment as **`scopeWhen{StudlyFieldName}`** methods (see **Naming** bullets below — not `{Model}{Column}`)
+- **Naming — do not use the model class name in `scopeWhen*`:** On `EmployeeRequest`, ✖ `scopeWhenEmployeeRequestStatus`, ✖ `scopeWhenEmployeeRequestType`; ✔ `scopeWhenStatus`, ✔ `scopeWhenType` (the `where(...)` inside still uses the real column: `employee_request_status`, `employee_request_type`). Repeat: scopes are named for the **field concept**, not **`{Model}{Column}`**.
+- **Naming — other columns**: map `snake_case` → `scopeWhen` + **PascalCase** segments when there is no redundant model prefix (e.g. `category_id` → `scopeWhenCategoryId`, invoked as `whenCategoryId()`)
+- **Do not** use **`scopeBy{Column}`** (e.g. **`scopeByUserType`**, **`scopeByServiceId`**) for filters—use **`scopeWhen{Column}`** with **`$query->when(...)`** (invoked as **`whenUserType()`**, **`whenServiceId()`**, etc.)
+- **Implementation**: use **`$query->when($value, function ($q) use ($value) { ... })`**; put **`where`**, **`whereIn`**, etc. **inside** the closure. End the method with **`}// end of scopeWhenCategoryId`** (match the method name)
+- **Callers**: use **`Model::query()->whenCategoryId($categoryId)`** (or chain **`->whenCategoryId($categoryId)`**) — **never** chain **`->where('category_id', $categoryId)`** or **`->where('category_id', 1)`** when a scope exists for that column
+- **Generic single-column filters**: For **one** database column, add **one** `scopeWhen{Column}` that takes the **value** to filter by (use a nullable parameter when “omit filter when empty” is required). **Callers** supply the value for each scenario: **`now()->year`**, **`$request->year`**, a constant year, config, etc. Do **not** add extra scopes for special cases of the **same** column — e.g. use **`->whenYear(now()->year)`** or **`->whenYear($anyYear)`** instead of a separate **`scopeWhenCurrentYear`**
+- **`scopeWhenSearch`**: use for generic text search (e.g. `LIKE` on `name`); follow the same **`when`** + closure pattern as below
+- If a filter does **not** map cleanly to one `snake_case` column, name the scope by **intent** (still **never** prefix with the model class name)
+- **One `when` per scope method**: do **not** chain multiple **`$query->when(...)`** on the builder inside one scope method — split into separate **`scopeWhen*`** methods
+- **Chaining scopes**: **`Model::query()->whenStudentId($id)->whenBranchId($id)`** (multiple **`scopeWhen{Column}`** calls) is **allowed** — each scope still uses exactly one **`when`**
+- **Compound filters** (e.g. **`project_id`**, **`curriculum_id`**, **`level_id`**): use **one `scopeWhen` per column**; compose in **controllers** with **`Model::query()->with(...)->whenX()->whenY()->...`**. Each **`scopeWhen{Column}`** must use **`$query->when($value, ...)`** so missing values **skip** that filter — **no** **`if` / `elseif`** in the caller when “only apply if present” is enough (scopes combine with **AND** when multiple values are set). **Do not** put reusable Eloquent query builders on **service** classes; **do not** implement as a single **`scopeForAssessment`** with nested **`if`** inside one **`when`** unless unavoidable
+- **Services**: do **not** centralize **`Model::query()`** composition for reuse — keep query chains in **controllers** (services may call **`Model::query()`** inline only for internal orchestration, not as a shared query API)
+
+✔
+```php
+//scope
+public function scopeWhenCategoryId($query, $categoryId)
+{
+    return $query->when($categoryId, function ($q) use ($categoryId) {
+
+        return $q->where('category_id', $categoryId);
+
+    });
+
+}// end of scopeWhenCategoryId
+```
+
+✖ (apply `where` directly — use **`when`** + closure instead)
+```php
+//scope
+public function scopeWhenCategoryId($query, $categoryId)
+{
+    return $query->where('category_id', $categoryId);
+}// end of scopeWhenCategoryId
+```
+
+✖ (use **`scopeBy*`** with unconditional **`where`** — use **`scopeWhen*`** + **`$query->when(...)`** instead)
+```php
+//scope
+public function scopeByUserType($query, $type)
+{
+    return $query->where('user_type', $type);
+
+}// end of scopeByUserType
+```
+
+✔ (same column, optional filter via **`when`**)
+```php
+//scope
+public function scopeWhenUserType($query, $userType)
+{
+    return $query->when($userType && (string) $userType !== '0', function ($q) use ($userType) {
+
+        return $q->where('user_type', $userType);
+
+    });
+
+}// end of scopeWhenUserType
+```
+
+In controllers, chain **`when*`** scopes on the query (e.g. **`BranchStudent::query()->with([...])->whenStudentId(...)->whenBranchId(...)->whenProjectId(...)->whenCurriculumId(...)->whenLevelId(...)->first()`**), not one mega-scope with several **`when`** calls inside the model.
+
+## MODEL STRUCTURE (skeleton)
+
+Section order and comments: **`//attr`**, **`//scope`**, **`//rel`**, **`//fun`**. Implement **`scopeWhenSearch`** using the same **`$query->when($search, function ...)`** pattern as **`scopeWhenCategoryId`**.
+
+```php
+class Example extends Model
+{
+    //attr
+
+    //scope
+    public function scopeWhenSearch($query, $search)
+    {
+        return $query->when($search, function ($q) use ($search) {
+
+            return $q->where('name', 'like', '%' . $search . '%');
+
+        });
+
+    }// end of scopeWhenSearch
+
+    //rel
+
+    //fun
+
+} //end of model
+```

@@ -1,0 +1,56 @@
+---
+description: Scheduled work as queued jobs; Horizon queues and retries.
+alwaysApply: false
+globs:
+  - "**/bootstrap/app.php"
+  - "**/app/Jobs/**/*.php"
+  - "**/app/Console/Commands/**/*.php"
+---
+
+# Laravel scheduling and Horizon
+
+Register recurring tasks in [`bootstrap/app.php`](bootstrap/app.php) via `->withSchedule(function (Schedule $schedule) { ... })`. Do **not** use `Console\Kernel` for new scheduling—Laravel 11+ uses `Application::configure()` and `withSchedule`. See [.cursor/rules/laravel.mdc](.cursor/rules/laravel.mdc) for the Laravel 12 application shell.
+
+## `withoutOverlapping()` in `withSchedule`
+
+- **Always** chain **`->withoutOverlapping(...)`** on every scheduled **`$schedule->job(...)`** or **`$schedule->command(...)`** in `bootstrap/app.php`. Pass **seconds** when the task can exceed the default mutex expiry (e.g. long backups: `->withoutOverlapping(7200)`).
+- Omitting `withoutOverlapping()` for new schedule entries is **not** allowed.
+
+## Recurring / scheduled work → Job (Horizon)
+
+- Put work in `app/Jobs/`, implement `ShouldQueue`, use `Dispatchable`, `InteractsWithQueue`, `Queueable`, `SerializesModels` as needed.
+- Register with **`$schedule->job(YourJob::class)->daily()->withoutOverlapping()`** (or `hourly()`, `everyMinute()`, etc., **always** ending with `withoutOverlapping()`).
+- **Do not** add new **cron-like** recurring logic as a scheduled Artisan command—use a job so it runs through the queue and appears in Horizon.
+
+✔
+```php
+$schedule->job(RenewNurserySubscriptionDatesJob::class)
+    ->daily()
+    ->withoutOverlapping();
+
+$schedule->job(RunBackupJob::class)
+    ->twiceDaily()
+    ->withoutOverlapping(7200);
+```
+
+✖
+```php
+$schedule->job(RenewNurserySubscriptionDatesJob::class)->daily();
+
+$schedule->command('nursery:renew-subscriptions')->daily();
+```
+
+## When Artisan commands are OK
+
+- One-off or manual CLIs (migrations, data fixes, deploy hooks): `app/Console/Commands/...` invoked by developers or scripts—not the default for **scheduled** background work.
+
+## Queues and Horizon
+
+- Most jobs: default queue (see [`config/horizon.php`](config/horizon.php) `default` supervisor).
+- Long-running or backup-related jobs: `public $queue = 'backups';` so they use the `backups` supervisor (higher timeout/memory).
+- Set `$tries`, `$timeout`, and `$backoff` on jobs when failure/retry behavior matters.
+
+## Related rules
+
+- Application bootstrap: [.cursor/rules/laravel.mdc](.cursor/rules/laravel.mdc)
+- Eloquent queries: [.cursor/rules/laravel-query-style.mdc](.cursor/rules/laravel-query-style.mdc)

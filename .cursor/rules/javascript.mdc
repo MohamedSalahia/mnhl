@@ -1,0 +1,211 @@
+---
+description: editing and/or creating javascript files - Vite entries (resources/js/admin/app.js, app.js, nursery/app.js); import scripts under public/admin_assets/custom/js and public/web_assets/custom/js via repo-root paths from Vite entries, not import('./file') beside the entry; shared/index.js bundles; avoid inline script and @push except datatables.mdc and rare standalone pages; structure—$(function(){}) first with });//end of document ready, then let handle* (delegated toggles) and fetch* (dependent-select AJAX) and window.init* (re-run on livewire:navigated); Livewire SPA data via rendered DOM only
+globs:
+  - "**/*.js"
+  - "**/*.blade.php"
+alwaysApply: false
+---
+
+# JAVASCRIPT (VITE)
+
+- Do NOT use inline `<script>` or `@push` for normal pages
+- Use Vite entry files
+- **Exception — admin DataTables:** Pages that initialize **Yajra** server-side tables per [.cursor/rules/datatables.mdc](.cursor/rules/datatables.mdc) keep the `DataTable({ ... })` init in the feature **`index.blade.php`** inside `@push('scripts')` with inline jQuery. **Do not** move that init into Vite — `datatables.mdc` forbids putting it in bundled JS.
+
+## VITE ENTRIES
+- Admin → resources/js/admin/app.js
+- Frontend → resources/js/app.js
+- Nursery → resources/js/nursery/app.js (when present)
+
+## DYNAMIC IMPORTS FROM VITE ENTRY FILES
+
+From `resources/js/admin/app.js` and `resources/js/app.js`, **do not** use `import('./filename.js')` (or other same-directory relative chunks) **for scripts that live under** `public/admin_assets/custom/js/` or `public/web_assets/custom/js/`. Use explicit repo-root-relative paths through `public/...` so imports resolve to those trees on disk.
+
+### Admin entry — `resources/js/admin/app.js`
+
+✔
+```js
+import('../../../public/admin_assets/custom/js/ratings.js');
+```
+
+✖
+```js
+import('./ratings.js');
+```
+
+- Path uses **three** `../` segments (from `resources/js/admin/` to project root), then `public/admin_assets/custom/js/filename.js`.
+- Sources for these dynamic imports should **live** at `public/admin_assets/custom/js/filename.js`.
+
+### Frontend entry — `resources/js/app.js`
+
+✔
+```js
+import('../../public/web_assets/custom/js/index.js');
+```
+
+✖
+```js
+import('./something-in-public-web-custom-js.js');
+```
+
+- Path uses **two** `../` segments (from `resources/js/` to project root), then `public/web_assets/custom/js/filename.js`.
+- Scripts that remain only under `resources/js/` (e.g. sibling `resources/js/echo.js`) may still use `import('./echo.js')`; this rule targets **public** web admin/custom bundles, not every relative import in the entry.
+
+## LIVEWIRE (SPA)
+
+- On Livewire / **`wire:navigate`** stacks, **do not** pass repopulated request input or ad hoc “flash” values into custom JS via **`data-*`** or meta — use the **rendered** DOM and what Blade outputs from **explicit** controller/model props (see [.cursor/rules/blade-form-fields.mdc](.cursor/rules/blade-form-fields.mdc)). **Do not** parse “previous request” values in **`public/**` custom JS — rely on **delegated** handlers after navigation.
+- **Do not** use **`$('#…').trigger('change')`** (or similar) in **`shared/index.js`** AJAX success / **`livewire:navigated`** helpers to resync injected markup — **Blade** partials must output the correct DOM. Avoid feature-specific post-inject hooks in the shared bundle.
+
+## STRUCTURE
+
+- **Always** put **jQuery document ready** at the **top** of the file: immediately after any `import` / top-level constants (if the file has them), and **before** every `let handle*` / `window.init*` definition. Do not place helpers above the ready handler.
+- The ready wrapper uses this closing comment (no space after `//`): `});//end of document ready`
+
+✔
+```js
+$(function () {
+
+    handleInit();
+
+    handleSecondThing();
+
+});//end of document ready
+
+let handleInit = () => {
+
+    // code
+
+}
+
+let handleSecondThing = () => {
+
+    // code
+
+}
+```
+
+✔ Minimal skeleton (ready block first, body empty until wired):
+```js
+$(function () {
+
+});//end of document ready
+```
+
+- Inside `$(function () { ... })`, put **one blank line between each** statement / `handleSomething();` / `window.initSomething();` call.
+- **Between** adjacent top-level declarations (`let handle*`, `window.init*`, named functions, etc.): use **one** blank line only — do **not** use two or more consecutive blank lines between functions.
+- For **file-private** helpers that are **not** the global bundle entry: **prefer** **`handle*`** for **toggle / show / hide** (no AJAX); **prefer** **`fetch*`** for **dependent-select** AJAX that loads related options (see **DEPENDENT SELECT — AJAX FETCH**). See **GLOBAL PAGE INIT** for **`window.init*`**.
+- **`handle*`** names must describe **what the control does** (the **behavior**), **not** the page or form container. ✖ **`handleCompanyAssetForm`** (too generic). ✔ **`handleSerialized`**, **`handleExemptedFromFeesToggle`**. Pair with a **one-time** guard **`{name}DelegatedBound`** aligned to that function (e.g. **`handleSerializedDelegatedBound`**). Inner **rebuild** / **sync** helpers: name after the **same** concern (e.g. **`rebuildSerializedInputs`**), **not** **`rebuildCompanyAssetSerialInputs`** when the file already implies company assets.
+
+## TOGGLE / SHOW / HIDE (delegated events — no `window.init*`)
+
+Use this pattern whenever the only behavior is **showing, hiding, or toggling** a wrapper (or related fields) based on a control.
+
+- Register **delegated** handlers: **`$(document).on('change', '#control-id', ...)`** (or **`click`**, etc.) inside a **`let handleBehaviorName = function () { ... };`** (e.g. **`handleSerialized`**) and call **`handleBehaviorName();`** once from **`$(function () { ... });`**. See **STRUCTURE** — **`handle*`** naming (behavior-specific, not **`handleSomeForm`**).
+- **Do not** add **`window.initFeatureName`** for this — there is nothing to “re-run” after Livewire navigation: delegation already applies to elements that appear later.
+- **Do not** register the same logic from **`livewire:navigated`** / **`callLivewireNavigatedMethods`** for toggles built this way.
+- **Initial visibility** when the page is rendered with server state (e.g. named variables from the controller after validation, a pre-checked checkbox the server set) belongs in **Blade** on the wrapper (e.g. `style="display: none"` via a ternary when the server knows the block starts hidden), **not** a separate JS init that syncs on load.
+
+✔
+```js
+let handleExemptedFromFeesToggle = function () {
+
+    $(document).on('change', '#exempted-from-fees', function () {
+
+        let $wrapper = $('#student-subscription-fee-fields');
+
+        if (!$wrapper.length) {
+
+            return;
+
+        }
+
+        if ($(this).is(':checked')) {
+
+            $wrapper.css('display', 'none');
+
+        } else {
+
+            $wrapper.css('display', '');
+
+        }
+
+    });
+
+};
+```
+
+✖
+```js
+window.initStudentExemptedFromFeesToggle = function () { /* sync visibility */ };
+
+// + document ready call + livewire:navigated — unnecessary for delegated toggle/show/hide
+```
+
+**When `window.init*` still applies:** features that **fetch**, **initialize Select2/repeatable widgets on new DOM**, **attach non-delegated listeners to specific nodes**, or **must run again after `livewire:navigated`** — see **GLOBAL PAGE INIT** below.
+
+## DEPENDENT SELECT — AJAX FETCH (related model / options)
+
+When a **parent** `<select>` loads **related** options via **`$.ajax`** into a **child** `<select>` (HTML fragment of `<option>` rows):
+
+- Name the **delegated setup** **`fetchXxx`** where **`Xxx`** is the **related** resource being loaded (e.g. **`fetchProductModels`**, **`fetchAreas`**). **Do not** encode the parent entity in the function name (e.g. avoid **`handleBrandProductModels`** in **`brands.js`** — the file already implies context).
+- Call **`fetchXxx();`** once from **`$(function () { ... });`**. Use a **one-time** guard flag such as **`fetchXxxDelegatedBound`** (e.g. **`fetchProductModelsDelegatedBound`**) so listeners are not duplicated.
+- **Prefer** **`fetchXxx`** for this pattern over **`handleXxx`** — reserve **`handle*`** for **toggle / show / hide** with **no** network fetch (see **TOGGLE / SHOW / HIDE**).
+
+## GLOBAL PAGE INIT (`window.initFeatureName`)
+
+When a page needs **one callable entry** that sets up everything for a feature (initial load **and** the same steps must run from **`livewire:navigated`** via the shared bundle), expose it on **`window`** as **`window.initModelName`** / **`window.initFeatureName`** — camelCase after `init`, named after the feature (e.g. **`window.initNurseries`**).
+
+- **Not** for simple **toggle/show/hide** driven by **`$(document).on(...)`** — use **TOGGLE / SHOW / HIDE** above instead (no **`window.init*`**, no **`livewire:navigated`** hook).
+
+- **`$(function () { ... });`** stays **at the top** and calls whatever this load needs: typically **`window.initNurseries();`** (or your **`window.initFeatureName()`**), plus **`handle*`** helpers, **`setView(...)`**, etc. Use the **`window.`** prefix when invoking the init so the entry point is obvious.
+- Define **`window.initFeatureName = () => { ... };`** **immediately below** the document-ready block, then **`let`** / **`const`** helpers (`fetchNurseries`, `nurseriesScrollListener`, …). Those inner helpers do **not** need a `handle` prefix; keep them **file-private** and grouped under the **`window.init*`** orchestrator.
+- The **`window.init*`** function should **only** coordinate: call fetch, attach scroll/listeners, delegate to small functions — keep it readable.
+
+✔
+```js
+$(function () {
+
+    window.initNurseries();
+
+    handleFilters();
+
+});//end of document ready
+
+window.initNurseries = () => {
+
+    fetchNurseries();
+
+    nurseriesScrollListener();
+
+};
+
+let fetchNurseries = () => {
+
+//some code here
+
+};
+
+let nurseriesScrollListener = () => {
+
+//some code here
+
+}//end of nurseriesScrollListener
+```
+
+- Register the **same** **`window.initNurseries`** (or your feature name) from **`livewire:navigated`** in the appropriate **`shared/index.js`** so SPA navigations re-run setup. See **FETCH + INFINITE SCROLL + LIVEWIRE** below.
+
+## FETCH + INFINITE SCROLL + LIVEWIRE
+
+When JS **fetches** data and uses **infinite scroll** (load more, IntersectionObserver, etc.), use the **same** global name as in **GLOBAL PAGE INIT**: **`window.initFeatureName`**.
+
+- Expose a single entry on **`window`**: **`window.initFeatureName`** (camelCase after `init`, e.g. `window.initChats`, `window.initNurseries`).
+- **Register** it after Livewire navigations: add **`window.initFeatureName();`** inside **`$(document).on('livewire:navigated', ...)`** in the correct shared bundle:
+  - Admin → `public/admin_assets/custom/js/shared/index.js`
+  - Web → `public/web_assets/custom/js/shared/index.js`
+- Use the **`window.`** prefix in those shared files (same as `window.initSelect2`, `window.initChats`, …).
+- If **`callLivewireNavigatedMethods`** exists later, call **`window.initFeatureName`** from that helper **or** from `livewire:navigated` — **one** registration path per feature, not both.
+- If the feature uses **`$(document).on(...)`**, observers, or other state that survives navigation, add teardown on **`livewire:navigating`** (or namespaced `.off()`), matching the pattern of `destroySelect2` / `destroyRepeatable` in the same shared `index.js`.
+
+✔ Feature file: `window.initMyFeed = () => { /* fetch + scroll */ };` — shared `index.js`: `window.initMyFeed();` inside `livewire:navigated`.
+
+✖ Only running on first `document` ready with no `window.init*` + no call from `livewire:navigated` — breaks after Livewire navigation.

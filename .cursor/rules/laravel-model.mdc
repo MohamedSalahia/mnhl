@@ -1,0 +1,100 @@
+---
+description: Eloquent models — section order (attr/scope/rel/fun), redundant $table
+globs: app/Models/**/*.php
+alwaysApply: false
+---
+
+# Laravel model: class structure
+
+Use **four** section comments in this **fixed order**. Each section groups related members; do not mix (e.g. do not put relations under `//attr`).
+
+**Spacing:** Do **not** leave a blank line immediately after `//attr`, `//scope`, `//rel`, or `//fun` when that section has members—put the first member on the **next line** directly under the comment.
+
+**Empty `//attr`:** If there are **no** accessors/mutators under `//attr` (nothing whose name includes `Attribute`), **keep one blank line** between `//attr` and `//scope` so the section marker is not flush against the next section.
+
+**Above `//attr`:** After `use ...` traits, list **all configuration** in one block—properties such as **`$fillable`**, **`$casts`**, **`$hidden`**, **`$appends`**, **`$with`**, optional **`protected $table`**, **`$primaryKey`**, **`$guarded`**, and trait config on the model (e.g. **`$translatedAttributes`**). Nothing under the `//attr` comment belongs in this block.
+
+**Under `//attr`:** **Only** members whose **names include `Attribute`**—classic accessors/mutators (`getNameAttribute`, `getImagePathAttribute`, `setFooAttribute`, …) and Laravel **`Attribute::make`** definitions where the method or return type uses **`Attribute`** (e.g. `protected function imagePath(): Attribute`). Do **not** put `$fillable`, `$casts`, or other properties below `//attr`.
+
+| Section   | Contents |
+|-----------|----------|
+| `//attr`  | **Only** `get*Attribute` / `set*Attribute` and `*(): Attribute` accessors/mutators |
+| `//scope` | Query scopes (`scopeWhen*`, `scopeWhenSearch`, …) — name **`scopeWhen{Field}`** without embedding the model class name (see [.cursor/rules/laravel-php-style.mdc](.cursor/rules/laravel-php-style.mdc) **Model query scopes**) |
+| `//rel`   | Eloquent relations (`hasMany`, `belongsTo`, …) |
+| `//fun`   | Everything else: helpers, **`boot`**, **`getActivitylogOptions`**, route key overrides, other **`Model`** overrides — **not** attribute accessors/mutators |
+
+✔
+```php
+class Example extends Model
+{
+    use HasFactory, Translatable;
+
+    protected $fillable = ['name'];
+
+    protected $casts = ['published_at' => 'datetime'];
+
+    protected $hidden = ['internal_only'];
+
+    protected $appends = ['image_path'];
+
+    protected $with = ['translations'];
+
+    public $translatedAttributes = ['title'];
+
+    //attr
+    public function getNameAttribute($value): string
+    {
+        // ...
+    }// end of getNameAttribute
+
+    public function getImagePathAttribute(): ?string
+    {
+        // ...
+    }// end of getImagePathAttribute
+
+    //scope
+    public function scopeWhenSearch($query, $search)
+    {
+        // ...
+    }// end of scopeWhenSearch
+
+    //rel
+    public function company(): BelongsTo
+    {
+        // ...
+    }// end of company
+
+    //fun
+    protected static function booted(): void
+    {
+        // ...
+    }// end of booted
+
+} //end of model
+```
+
+✔ (no attribute accessors/mutators — blank line after `//attr`)
+
+```php
+    //attr
+
+    //scope
+    public function scopeWhenSearch($query, $search)
+    {
+        // ...
+    }// end of scopeWhenSearch
+```
+
+- Class closing: `} //end of model` (see [.cursor/rules/laravel-php-style.mdc](.cursor/rules/laravel-php-style.mdc)).
+
+---
+
+# Laravel model: `$table` property
+
+Eloquent infers the table from the class name: **StudlyCase** → **snake_case plural** (e.g. `CompanyAssetType` → `company_asset_types`). When the migration uses that name, **omit** `protected $table`.
+
+✔ Inferred table matches migration — no `$table`.
+
+✖ Redundant: `protected $table = 'company_asset_types';` on `CompanyAssetType`.
+
+**When `protected $table` is required:** only if the real table name does **not** match Eloquent’s inference (custom / non-plural / legacy / pivot names). Align with the migration.

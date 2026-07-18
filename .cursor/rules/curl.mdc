@@ -1,0 +1,43 @@
+---
+description: curl print / output formatted for Postman; prefer form data over raw JSON.
+alwaysApply: false
+---
+
+# curl for Postman
+
+When printing or suggesting a **curl** command (API calls, webhooks, etc.), follow this layout and body style so it is easy to copy into Postman or read in order.
+
+## Order (Postman-friendly)
+
+1. `curl` and `-X METHOD` when the method is not default `GET`.
+2. **URL** next (quoted).
+3. **Headers**: each `-H 'Name: value'` on its own line.
+4. **Body last**: `-d`, `--data-urlencode`, or `-F` as appropriate.
+
+Use a **multiline** curl with `\` at line ends when it helps readability.
+
+## Body: form data by default
+
+- Prefer **`application/x-www-form-urlencoded`**: repeat `--data-urlencode 'key=value'` (or `-d`) per field as the endpoint expects.
+- Use **multipart** (`-F 'key=value'`, `-F 'file=@/path'`) for file uploads or when the API expects multipart form-data.
+- **Do not** default to `Content-Type: application/json` with a raw JSON `-d '{...}'` unless the endpoint is JSON-only or you explicitly ask for JSON.
+
+✔
+```bash
+curl -X POST 'https://example.test/api/endpoint' \
+  -H 'Accept: application/json' \
+  --data-urlencode 'email=user@example.com' \
+  --data-urlencode 'password=secret'
+```
+
+✖ (avoid as the default)
+```bash
+curl -X POST 'https://example.test/api/endpoint' \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json' \
+  -d '{"email":"user@example.com","password":"secret"}'
+```
+
+## JSON-only APIs
+
+If the API **only** accepts JSON (documented or existing clients use JSON), a JSON body is fine—still keep the same **URL → headers → body** order for Postman.

@@ -1,0 +1,236 @@
+---
+description: Laravel FormRequest validation — boolean fields (merge in prepareForValidation; never $this->boolean()), rules() / RuleFactory, field order matches Blade forms, PUT/PATCH overrides last before return, no isMethod(post) (branch only PUT/PATCH)
+globs:
+  - "**/Http/Requests/**/*.php"
+alwaysApply: false
+---
+
+# Agent obligation
+
+- **Whenever** you create or edit a **`FormRequest`** (or add validation rules to an existing one), **apply this entire file on the first edit**—including booleans, `$rules` shape, field order vs Blade, and `prepareForValidation` placement.
+- Do **not** wait for the user to say “apply the validation rules” or “match `laravel-validation-request`”. Non-compliant code should be fixed **in the same change** as the feature work unless the user explicitly asks for a quick-and-dirty exception.
+
+# FORM REQUEST BOOLEAN
+
+✔
+```php
+$this->is_active ?? false;
+```
+
+✖
+```php
+filter_var($this->input('is_active', false), FILTER_VALIDATE_BOOLEAN);
+```
+
+✖
+```php
+$this->input('is_active');
+```
+
+✖
+```php
+$this->boolean('is_active');
+```
+
+- Use direct property access: `$this->field_name` (e.g. `$this->event_id`, not `$this->input('event_id')`).
+- NEVER use `$this->input()` in FormRequest for any field (strings, ids, etc.)—**always** `$this->key` after you have merged defaults if needed.
+- **Never** use **`$this->boolean('field_name')`** in **`rules()`**, **`authorize()`**, or anywhere else on the FormRequest. **Normalize** booleans in **`prepareForValidation`** with **`$this->merge([...])`** (`$this->field_name ?? false`), then use **`$this->field_name`** (already boolean-correct after merge) in **`rules()`** and the rest of the class.
+- Avoid `filter_var`
+- Use null coalescing when needed: `$this->field_name ?? false`
+- For `$request` / `request()` top-level input access, see [.cursor/rules/laravel-php-style.mdc](.cursor/rules/laravel-php-style.mdc)
+
+# `rules()` structure and return placement
+
+Portable across Laravel projects (with or without Astrotomic `RuleFactory`).
+
+- Build a **single** `$rules` array with **every** rule key the request needs: translatable `%field%` keys (when using `RuleFactory`), plain keys, and nested keys (e.g. `items.*`, `category_ids.*`, `attachments.*`).
+- **Do not** call `RuleFactory::make($rules)` early, assign the result to `$resolved`, and then append more keys to `$resolved`. Anything you would add to `$resolved` belongs on **`$rules` first** (including overrides applied after an `if (in_array($this->method(), ['PUT', 'PATCH']))` block). Call `RuleFactory::make($rules)` **only once**, at the end, when you use the factory; otherwise return `$rules` directly.
+- End **`rules()`** with a **single** **`return $rules;`** or **`return RuleFactory::make($rules);`**. Do **not** return from `rules()` earlier in the method except when splitting validation across multiple FormRequest classes is intentional (rare). The **`rules()` method** must not patch `$resolved` / `$rules` **after** `RuleFactory::make`. Do **not** add logic after a final `return` (no patching `$resolved` after `make`).
+
+## Field order in `$rules` (match create/edit Blade)
+
+- **Order keys in `$rules` in the same sequence** as the corresponding inputs appear **top to bottom** in the **create** and **edit** Blade forms for that resource (e.g. if the form shows `title`, then `body`, then `slug`, list `%title%`, `%body%`, `slug` in that order—not alphabetically, not by type, not by “required first”).
+- Use the **create** or **edit** view as the reference; if both exist and field order matches, either is fine. If they differ, align with the form you are changing or the **canonical** screen for that flow.
+- **Place nested keys immediately after their parent**: e.g. `item_ids`, then `item_ids.*`; `category_ids`, then `category_ids.*`; `attachments`, then `attachments.*`.
+- **PUT/PATCH overrides** replace rules for existing keys; **do not** use overrides as an excuse to reorder—keep the **base `$rules` array** in Blade order so the file stays easy to scan next to the view.
+
+# `rules()` and HTTP method branching (`PUT` / `PATCH`)
+
+## Never `$this->isMethod('post')`
+
+For Form Requests used on **both** `store` (POST) and `update` (PUT/PATCH):
+
+- **Do not** use `$this->isMethod('post')` or `$this->is('post')` to branch create vs update. **Create is POST**; you only need an explicit conditional for **update**.
+- **Order in `rules()`** (single final `return`):
+  1. **Initial `$rules`** — defaults aligned with **create** / store (and keys shared with update).
+  2. **Store-only conditionals** — nested arrays, `size:*`, or other rules that must **not** apply to update: wrap with **`if (!in_array($this->method(), ['PUT', 'PATCH']))`** (still **no** `isMethod('post')`).
+  3. **Last** — **`if (in_array($this->method(), ['PUT', 'PATCH']))`** to **override** keys for update (`Rule::unique()->ignore(...)`, route-scoped `exists`, `sometimes` / optional files, `prohibited` on create-only fields, etc.).
+- **`prepareForValidation`** may still branch with **`if (in_array($this->method(), ['PUT', 'PATCH']))`** first when update merges differ; that order is independent of `rules()`.
+
+✖ **Bad**
+
+```php
+if ($this->isMethod('post')) {
+    $rules['quantity'] = ['required', 'integer'];
+}
+```
+
+✔ **Good**: default `$rules` = create; append **store-only** keys **above** the PUT/PATCH block; **`if (in_array($this->method(), ['PUT', 'PATCH']))`** overrides **last**; **single** final `return` with `RuleFactory::make($rules)` or `return $rules`.
+
+✔ **Good** (base rules + PUT/PATCH overrides in one `rules()` method; **PUT/PATCH block last** before `return`):
+
+```php
+public function rules()
+{
+    $rules = [
+        '%name%' => ['required', Rule::unique('country_translations', 'name')],
+        'code' => 'required|unique:countries,code',
+        'alpha_two' => 'required|string|max:2',
+        'service_country' => 'nullable|boolean',
+        'default' => 'nullable|boolean',
+        'currency_id' => 'required|exists:currencies,id',
+        'timezone_id' => 'required|exists:timezones,id',
+        'min_mobile_digits' => 'required|integer',
+        'max_mobile_digits' => 'required|integer|gte:min_mobile_digits',
+        'flag' => 'required|image:allow_svg|max:2048',
+    ];
+
+    if (in_array($this->method(), ['PUT', 'PATCH'])) {
+
+        $country = $this->route()->parameter('country');
+
+        $rules['%name%'] = [
+            'required',
+            Rule::unique('country_translations', 'name')
+                ->ignore($country->id, 'country_id'),
+        ];
+
+        $rules['code'] = [
+            'required',
+            Rule::unique('countries', 'code')
+                ->ignore($country->id, 'id'),
+        ];
+
+        $rules['flag'] = ['sometimes', 'nullable'];
+
+    }//end of if
+
+    return RuleFactory::make($rules);
+
+}//end of rules
+```
+
+✔ **Good** (same pattern, generic fields: `RuleFactory` + nested `item_ids.*` / `category_ids.*` on `$rules`; override nested rules on `$rules` for PUT/PATCH; **PUT/PATCH block last**; **single** final `return`):
+
+```php
+public function rules(): array
+{
+    $rules = [
+        '%title%' => ['required', 'string', 'max:255'],
+        '%body%' => ['required', 'string'],
+        'slug' => ['nullable', 'string', 'max:255'],
+        'item_ids' => ['sometimes', 'nullable', 'array'],
+        'item_ids.*' => [
+            'nullable',
+            Rule::exists('items', 'id')->where('published', true),
+        ],
+        'category_ids' => ['sometimes', 'nullable', 'array'],
+        'category_ids.*' => [
+            Rule::exists('categories', 'id'),
+        ],
+    ];
+
+    if (in_array($this->method(), ['PUT', 'PATCH'])) {
+
+        $post = $this->route()->parameter('post');
+
+        $rules['item_ids.*'] = [
+            'nullable',
+            Rule::exists('items', 'id')->where(function ($query) use ($post) {
+
+                $query->whereNull('post_id')
+                    ->orWhere('post_id', $post->id);
+
+            }),
+        ];
+
+    }//end of if
+
+    return RuleFactory::make($rules);
+
+}//end of rules
+```
+
+The country and post examples follow **PUT/PATCH overrides last** before `return`.
+
+✔ **Good** (base → store-only conditionals → **PUT/PATCH overrides last** → **single** `return`):
+
+```php
+public function rules(): array
+{
+    $rules = [
+        // …defaults aligned with create/store…
+    ];
+
+    if (!in_array($this->method(), ['PUT', 'PATCH'])) {
+
+        // …store-only keys (nested arrays, size:*, etc.)…
+
+    }//end of if
+
+    if (in_array($this->method(), ['PUT', 'PATCH'])) {
+
+        // …override for update: unique()->ignore(), prohibited on create-only fields, …
+
+    }//end of if
+
+    return $rules;
+
+}//end of rules
+```
+
+(See e.g. [app/Http/Requests/Company/CompanyAssetRequest.php](app/Http/Requests/Company/CompanyAssetRequest.php).)
+
+- **Do not** move `if (in_array($this->method(), ['PUT', 'PATCH']))` into a separate helper (e.g. `protected function itemIdsItemRules()`) that only exists to branch by method.
+
+✖ **Bad**: helper that branches by method and is called from `rules()`:
+
+```php
+$resolved['item_ids.*'] = $this->itemIdsItemRules();
+```
+
+✖ **Bad**: `RuleFactory::make` then patch `$resolved`—merge those rules into `$rules` first, then one `return RuleFactory::make($rules);` (or `return $rules;`) at the **end** of `rules()`:
+
+```php
+$resolved = RuleFactory::make($rules);
+
+$resolved['item_ids.*'] = [ /* ... */ ];
+
+return $resolved;
+```
+
+# `prepareForValidation`
+
+- When a Form Request needs `prepareForValidation`, **always** add it **at the bottom of the class**, **immediately before** the closing `}//end of request` (after `rules()`, `authorize()`, `messages()`, `attributes()`, and any other methods).
+- **Never** place `prepareForValidation` above other methods in the same class.
+- For **store + update** requests: branch with **`if (in_array($this->method(), ['PUT', 'PATCH']))`** for update-only merges (and **`return`** early if needed). **Do not** use **`$this->isMethod('post')`** for create-specific merges—use the default path or the code after the PUT/PATCH block.
+
+## Boolean fields in `prepareForValidation`
+
+Checkbox-style booleans are often **absent** when unchecked. **Always** normalize them in `prepareForValidation` with **`$this->merge([...])`**, one key per boolean, using **direct property access** and **`?? false`**:
+
+✔
+```php
+protected function prepareForValidation(): void
+{
+    $this->merge([
+        'has_extra_branch_price' => $this->has_extra_branch_price ?? false,
+        'is_active' => $this->is_active ?? false,
+    ]);
+}//end of prepareForValidation
+```
+
+- **Always** use this shape: `'field_name' => $this->field_name ?? false` for each boolean the request handles (replace `field_name` with the actual attribute).
+- **Order `merge([...])` entries** to match the same **top-to-bottom field order** as in the Blade form and **`$rules`** (booleans that appear later in the form should appear later in the merge array).
+- **Do not** rely only on `rules()` for absent checkboxes without merging `false` first, or validation may not see the field as expected when unchecked.
+- After merge, branch or validate in **`rules()`** with **`$this->field_name`** — **not** **`$this->boolean('field_name')`**.

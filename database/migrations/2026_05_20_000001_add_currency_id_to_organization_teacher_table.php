@@ -1,0 +1,23 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::table('organization_teacher', function (Blueprint $table) {
+            $table->foreignId('currency_id')->nullable()->constrained('currencies')->nullOnDelete()->after('fixed_salary');
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::table('organization_teacher', function (Blueprint $table) {
+            $table->dropForeign(['currency_id']);
+            $table->dropColumn('currency_id');
+        });
+    }
+};

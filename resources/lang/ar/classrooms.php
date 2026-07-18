@@ -1,0 +1,26 @@
+<?php
+
+return [
+    'classrooms' => 'الحلقات',
+    'classroom' => 'الحلقة',
+    'name' => 'الاسم',
+    'teacher' => 'المعلم',
+    'type' => 'النوع',
+    'types' => 'الأنواع',
+    'start_date' => 'تاريخ البداية',
+    'end_date' => 'تاريخ النهاية',
+    'individual' => 'فردي',
+    'group' => 'جماعي',
+    'number_of_students' => 'عدد الطلاب',
+    'information' => 'المعلومات',
+    'dates' => 'التواريخ',
+    'classroom_details' => 'تفاصيل الحلقة',
+    'details' => 'التفاصيل',
+    'students_list' => 'قائمة الطلاب',
+    'students_count' => 'طالب',
+    'no_students' => 'لا يوجد طلاب',
+    'no_students_message' => 'لم يتم تسجيل أي طلاب في هذه الحلقة بعد.',
+    'duration' => 'المدة',
+    'days' => 'يوم',
+    'branch' => 'الفرع',
+];

@@ -1,0 +1,36 @@
+---
+description: Laravel 12 application structure (bootstrap, routing, middleware, exceptions) + mandatory pre/post rule checks.
+alwaysApply: true
+---
+
+# Rule checks (do this for every Laravel task)
+
+**Before implementing**
+
+- Open and follow the **relevant** workspace rules for the work (not only this file). At minimum, when the task touches that area:
+  - **Migrations / schema** → [.cursor/rules/laravel-migrations.mdc](.cursor/rules/laravel-migrations.mdc) (default: edit the original `create_*` migration; use `orb php artisan make:migration` only when a *new* file is explicitly requested).
+  - **Blade forms / fields** → [.cursor/rules/blade-form-fields.mdc](.cursor/rules/blade-form-fields.mdc) (no `old()` for bind; `select2` on `<select>`; etc.).
+  - **Controllers** → [.cursor/rules/laravel-controller.mdc](.cursor/rules/laravel-controller.mdc) (e.g. `view(..., compact(...))` for view data).
+  - **Naming** → [.cursor/rules/laravel-naming.mdc](.cursor/rules/laravel-naming.mdc) when creating files or routes.
+  - **PHP style** → [.cursor/rules/laravel-php-style.mdc](.cursor/rules/laravel-php-style.mdc) where it applies.
+- If the task is narrow, still **skim** the list above and load any rule that could apply before writing code.
+
+**After writing code (before ending the turn)**
+
+- **Self-audit** the diff against those same rules and fix gaps (e.g. missed `select2`, stray `old()`, wrong migration pattern, missing `compact()` on `view()`).
+- For **DataTables** + event partials: confirm column order in the Blade `<thead>`, `columns: []`, and controller `data()` stay aligned (including icon/logo column position if the resource uses it).
+- Do **not** treat this as optional when the change touched migrations, Blade, or admin CRUD.
+
+---
+
+# Laravel 12 application structure
+
+- Use `Application::configure()` in [`bootstrap/app.php`](bootstrap/app.php)—do **not** use legacy `Http\Kernel` / `Console\Kernel` for new app wiring (Laravel 11+).
+
+## `bootstrap/app.php`
+
+- **`withRouting`**: `web`, `api`, `health`, and additional route groups as needed.
+- **`withMiddleware`**: global middleware, CSRF exceptions, middleware aliases.
+- **`withSchedule`**: where the scheduler is defined; for **what** to schedule (jobs vs commands, Horizon, queues), see [.cursor/rules/laravel-scheduling.mdc](.cursor/rules/laravel-scheduling.mdc).
+- **`withExceptions`**: custom render/report handlers.
+- **`withProviders`**: extra service providers when required.

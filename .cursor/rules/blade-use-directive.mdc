@@ -1,0 +1,46 @@
+---
+description: Blade — use @use for class imports; avoid @php use and repeated FQCN for enums
+globs: **/*.blade.php
+alwaysApply: false
+---
+
+# Blade class / enum imports
+
+When a Blade template needs a PHP **class** (including app enums) only so you can call static methods or reference the class with a **short name**, use Laravel’s **`@use`** directive. Do not use a top-level `@php use ... @endphp` block for that sole purpose, and do not repeat fully qualified class names everywhere when one import suffices.
+
+See [Laravel Blade — `@use`](https://laravel.com/docs/12.x/blade#blade-directives).
+
+## Preferred
+
+```blade
+@use('App\Enums\TagTypeEnum')
+
+@foreach (TagTypeEnum::getConstants() as $tagTypeValue)
+    {{-- ... --}}
+@endforeach
+```
+
+## Avoid (for class-only imports)
+
+```blade
+@php use App\Enums\TagTypeEnum; @endphp
+```
+
+```blade
+@foreach (\App\Enums\TagTypeEnum::getConstants() as $tagTypeValue)
+```
+
+Use **`TagTypeEnum::...`** after `@use` — no leading `\`.
+
+## Multiple classes (same namespace)
+
+When useful, group imports per Laravel docs:
+
+```blade
+@use('App\Enums\{TagTypeEnum, AssetTypeEnum}')
+```
+
+## Exceptions
+
+- If `@php` runs **more than** a `use` statement (variables, logic), keep that block; add **`@use`** separately for classes when needed.
+- For **`function`** or **`const`** imports, use **`@use(function ...)`** / **`@use(const ...)`** per Laravel docs, or existing project patterns.

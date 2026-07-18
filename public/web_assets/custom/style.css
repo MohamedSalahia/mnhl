@@ -1,0 +1,154 @@
+/* intl-tel-input: organization dashboard–aligned (layouts.app) */
+
+.iti,
+.iti * {
+    box-sizing: border-box;
+}
+
+.iti__country-list {
+    left: 0 !important;
+    right: auto !important;
+}
+
+.iti,
+.iti:focus-within {
+    border: 0 !important;
+    padding: 0 !important;
+}
+
+.iti.iti--allow-dropdown {
+    width: 100% !important;
+}
+
+.iti__selected-flag {
+    direction: ltr !important;
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+}
+
+[dir=rtl] .iti--allow-dropdown .iti__flag-container,
+[dir=rtl] .iti--separate-dial-code .iti__flag-container {
+    left: 0 !important;
+    right: auto !important;
+}
+
+.iti__country-list {
+    direction: ltr !important;
+}
+
+.iti input.form-control,
+[dir="rtl"] .iti input.form-control,
+[dir="rtl"] .iti input[type="tel"] {
+    direction: ltr !important;
+    text-align: left !important;
+}
+
+.iti input.form-control,
+.iti input.form-control:focus,
+.iti input.form-control::placeholder {
+    font-family: inherit !important;
+    font-size: inherit !important;
+    font-weight: 400 !important;
+    letter-spacing: 0 !important;
+    word-spacing: 0 !important;
+    text-rendering: auto !important;
+}
+
+.iti input.form-control:focus::-webkit-input-placeholder {
+    -webkit-transform: none !important;
+    transform: none !important;
+    -webkit-transition: none !important;
+    transition: none !important;
+}
+
+.iti input.form-control:focus::-moz-placeholder {
+    -moz-transform: none !important;
+    transform: none !important;
+    -moz-transition: none !important;
+    transition: none !important;
+}
+
+.iti input.form-control:focus:-ms-input-placeholder {
+    -ms-transform: none !important;
+    transform: none !important;
+    -ms-transition: none !important;
+    transition: none !important;
+}
+
+.iti input.form-control:focus::-ms-input-placeholder {
+    -ms-transform: none !important;
+    transform: none !important;
+    -ms-transition: none !important;
+    transition: none !important;
+}
+
+.iti input.form-control:focus::placeholder {
+    -webkit-transform: none !important;
+    -ms-transform: none !important;
+    -moz-transform: none !important;
+    transform: none !important;
+    -webkit-transition: none !important;
+    -ms-transition: none !important;
+    -moz-transition: none !important;
+    transition: none !important;
+}
+
+input.intl-tel.form-control:focus::-webkit-input-placeholder,
+input.intl-tel.form-control:focus::-moz-placeholder,
+input.intl-tel.form-control:focus:-ms-input-placeholder,
+input.intl-tel.form-control:focus::-ms-input-placeholder,
+input.intl-tel.form-control:focus::placeholder {
+    -webkit-transform: none !important;
+    -ms-transform: none !important;
+    -moz-transform: none !important;
+    transform: none !important;
+    -webkit-transition: none !important;
+    -ms-transition: none !important;
+    -moz-transition: none !important;
+    transition: none !important;
+}
+
+.intl-tel.form-control,
+.intl-tel.form-control:focus {
+    border-width: 1px !important;
+    box-sizing: border-box !important;
+}
+
+.iti input.form-control {
+    transition: border-color .15s ease, box-shadow .15s ease !important;
+}
+
+.mobile {
+    direction: ltr !important;
+}
+
+table td.mobile,
+table th.mobile,
+.table td.mobile,
+.table th.mobile,
+table td .mobile,
+table th .mobile,
+.table td .mobile,
+.table th .mobile {
+    direction: ltr !important;
+}
+
+table td .mobile,
+table th .mobile,
+.table td .mobile,
+.table th .mobile {
+    display: inline-block;
+}
+
+.mobile .flag-icon {
+    margin-right: 0.5rem;
+    vertical-align: middle;
+    font-size: 1.5rem;
+}
+
+/* Syria new independence flag override for phone input */
+.iti__flag.iti__sy {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' viewBox='0 0 640 480'%3E%3Cdefs%3E%3Cpolygon id='s' points='0,-28 6.58,-9.06 26.63,-8.65 10.65,3.46 16.46,22.65 0,11.2 -16.46,22.65 -10.65,3.46 -26.63,-8.65 -6.58,-9.06'/%3E%3C/defs%3E%3Crect width='640' height='160' fill='%23007a3d'/%3E%3Crect y='160' width='640' height='160' fill='%23fff'/%3E%3Crect y='320' width='640' height='160' fill='%23000'/%3E%3Cuse href='%23s' transform='translate(160,240)' fill='%23ce1126'/%3E%3Cuse href='%23s' transform='translate(320,240)' fill='%23ce1126'/%3E%3Cuse href='%23s' transform='translate(480,240)' fill='%23ce1126'/%3E%3C/svg%3E") !important;
+    background-position: center !important;
+    background-size: cover !important;
+}
